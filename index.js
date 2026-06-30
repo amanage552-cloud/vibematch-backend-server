@@ -222,7 +222,7 @@ io.on('connection', (socket) => {
 cron.schedule('*/5 * * * *', async () => {
   try {
     console.log('Sending automatic background heartbeat...');
-    await axios.get('https://onrender.com');
+    await axios.get('https://vibematch-backend-server.onrender.com');
   } catch (err) {
     console.log('Heartbeat ping successfully sent.');
   }
