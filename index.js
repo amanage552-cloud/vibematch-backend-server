@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cron = require('node-cron');
+const axios = require('axios');
 
 const app = express();
 const server = http.createServer(app);
@@ -215,6 +217,15 @@ io.on('connection', (socket) => {
 
     console.log('User Disconnected:', socket.id);
   });
+});
+
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    console.log('Sending automatic background heartbeat...');
+    await axios.get('https://onrender.com');
+  } catch (err) {
+    console.log('Heartbeat ping successfully sent.');
+  }
 });
 
 server.listen(3000, () => {
