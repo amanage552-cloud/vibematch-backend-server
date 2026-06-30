@@ -1,10 +1,12 @@
 const express = require('express');
+const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const cron = require('node-cron');
 const axios = require('axios');
 
 const app = express();
+app.use(cors({ origin: '*' }));
 const server = http.createServer(app);
 
 const io = new Server(server, {
