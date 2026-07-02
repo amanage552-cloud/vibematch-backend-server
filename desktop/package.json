@@ -16,16 +16,14 @@
     "appId": "com.vibematch.app",
     "productName": "VibeMatch",
     "directories": {
-      "output": "dist",
-      "buildResources": "../public/assets"
+      "output": "dist"
     },
     "files": [
       "**/*",
       "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
     ],
     "mac": {
-      "target": ["dmg"],
-      "icon": "../public/assets/icon.icns"
+      "target": ["dmg"]
     }
   }
 }
