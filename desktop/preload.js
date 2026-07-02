@@ -46,11 +46,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener(channel, wrapped);
   }
 });
-
-// Keep the preload surface minimal and whitelist-forward only.
-// Minimal preload for Electron; keep contextIsolation safe
-const { contextBridge } = require('electron');
-
-contextBridge.exposeInMainWorld('__vibematch_electron', {
-  platform: process.platform
-});

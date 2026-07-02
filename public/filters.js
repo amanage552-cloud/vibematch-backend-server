@@ -12,6 +12,10 @@ const Filters = (function(){
   let texture = null;
   let positionBuffer = null;
   let uModeLoc = null;
+  let uTimeLoc = null;
+  let uBlurRadiusLoc = null;
+  let uBlurStrengthLoc = null;
+  let params = { blurRadius: 3, blurStrength: 10 };
 
   function applyCssFallback(m) {
     if (!videoEl) return;
@@ -73,17 +77,22 @@ const Filters = (function(){
     gl = canvas.getContext('webgl');
     if(!gl) { console.warn('WebGL not available'); return; }
     const vs = `attribute vec2 a_position; varying vec2 v_uv; void main(){ v_uv=(a_position+1.0)*0.5; gl_Position = vec4(a_position,0,1); }`;
-    const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; uniform int u_mode; uniform float u_time; void main(){ vec2 uv=v_uv; vec2 texSize = vec2(640.0,480.0); vec2 px = 1.0/texSize; vec4 c = texture2D(u_tex, uv);
+    const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; uniform int u_mode; uniform float u_time; uniform float u_blurRadius; uniform float u_blurStrength; void main(){ vec2 uv=v_uv; vec2 texSize = vec2(640.0,480.0); vec2 px = 1.0/texSize; vec4 c = texture2D(u_tex, uv);
       if(u_mode==1){ // beauty: simple 5-tap gaussian-ish blur
+        float r = clamp(u_blurRadius, 1.0, 12.0);
+        float s = clamp(u_blurStrength/100.0, 0.0, 1.0);
         vec4 sum = vec4(0.0);
-        sum += texture2D(u_tex, uv) * 0.4;
-        sum += texture2D(u_tex, uv + vec2(px.x,0.0)) * 0.15;
-        sum += texture2D(u_tex, uv - vec2(px.x,0.0)) * 0.15;
-        sum += texture2D(u_tex, uv + vec2(0.0,px.y)) * 0.15;
-        sum += texture2D(u_tex, uv - vec2(0.0,px.y)) * 0.15;
-        c = sum;
-        // gentle contrast and color boost
-        c.rgb = clamp((c.rgb * 1.03 + 0.01), 0.0, 1.0);
+        float total = 0.0;
+        for(int i=-4;i<=4;i++){
+          float w = exp(-float(i*i)/(2.0*r*r));
+          vec2 offs = vec2(float(i))*px* r * 0.6;
+          sum += texture2D(u_tex, uv + offs) * w;
+          total += w;
+        }
+        sum /= total;
+        // blend original and blurred according to strength
+        c = mix(texture2D(u_tex,uv), sum, s);
+        c.rgb = clamp((c.rgb * 1.02 + 0.008), 0.0, 1.0);
       } else if(u_mode==2){ // funny: desaturate + wave
         float angle = 0.4 * sin(uv.y*30.0 + u_time*0.01); uv.x += angle*0.01; c = texture2D(u_tex, uv); float gray = dot(c.rgb, vec3(0.3,0.59,0.11)); c.rgb = mix(c.rgb, vec3(gray), 0.7);
       } else if(u_mode==3){ // danger: red tint with scanline
@@ -99,6 +108,9 @@ const Filters = (function(){
     positionBuffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); const verts = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]); gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
     texture = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texture); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     uModeLoc = gl.getUniformLocation(program, 'u_mode');
+    uTimeLoc = gl.getUniformLocation(program, 'u_time');
+    uBlurRadiusLoc = gl.getUniformLocation(program, 'u_blurRadius');
+    uBlurStrengthLoc = gl.getUniformLocation(program, 'u_blurStrength');
     gl.useProgram(program);
   }
 
@@ -137,7 +149,9 @@ const Filters = (function(){
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         const posLoc = gl.getAttribLocation(program, 'a_position'); gl.enableVertexAttribArray(posLoc); gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
         gl.uniform1i(uModeLoc, mode==='beauty'?1: mode==='funny'?2: mode==='cyber'?3:0);
-        const timeLoc = gl.getUniformLocation(program, 'u_time'); if(timeLoc) gl.uniform1f(timeLoc, t || 0);
+        if(uTimeLoc) gl.uniform1f(uTimeLoc, t || 0);
+        if(uBlurRadiusLoc) gl.uniform1f(uBlurRadiusLoc, params.blurRadius || 3);
+        if(uBlurStrengthLoc) gl.uniform1f(uBlurStrengthLoc, params.blurStrength || 10);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
       requestAnimationFrame(renderLoop);
@@ -150,10 +164,19 @@ const Filters = (function(){
     mode = m || 'none';
     // if GL not available, fall back to CSS filters
     if (!gl) applyCssFallback(mode);
+    // toggle UI controls for beauty
+    try{
+      const ctrl = document.getElementById('filterControls');
+      if (ctrl) ctrl.style.display = (mode==='beauty') ? 'block' : 'none';
+    }catch(e){}
+  }
+
+  function setParams(p){
+    params = Object.assign({}, params, p||{});
   }
 
   function stop(){ if (camera && camera.stop) camera.stop(); if (faceMesh) faceMesh.close(); }
 
-  return { init, applyFilter, stop };
+  return { init, applyFilter, stop, setParams };
 })();
 

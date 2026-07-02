@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Generates an .icns icon from public/assets/icon.png using macOS sips and iconutil
-# Run this on macOS locally: bash scripts/generate_icns.sh
+# Generates an .icns icon from ../public/assets/icon.png using macOS sips and iconutil
+# Run this on macOS locally: bash desktop/scripts/generate_icns.sh
 
-SRC=public/assets/icon.png
+SRC=../public/assets/icon.png
 OUT_DIR=build/icon.iconset
-OUT_ICNS=public/assets/icon.icns
+OUT_ICNS=../public/assets/icon.icns
 
 if [[ ! -f "$SRC" ]]; then
   echo "Source PNG not found at $SRC" >&2

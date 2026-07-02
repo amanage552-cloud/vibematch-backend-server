@@ -1,0 +1,31 @@
+{
+  "name": "vibematch-desktop",
+  "version": "1.0.0",
+  "description": "Desktop packaging workspace for VibeMatch (isolated)",
+  "main": "electron.js",
+  "scripts": {
+    "electron:dev": "ELECTRON_DEV=1 electron .",
+    "dist": "electron-builder --mac",
+    "make:icns": "bash scripts/generate_icns.sh"
+  },
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.vibematch.app",
+    "productName": "VibeMatch",
+    "directories": {
+      "output": "dist",
+      "buildResources": "../public/assets"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "icon": "../public/assets/icon.icns"
+    }
+  }
+}

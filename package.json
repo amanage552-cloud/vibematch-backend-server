@@ -3,13 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "electronMain": "electron.js",
   "scripts": {
     "start": "node index.js",
     "build": "echo \"Skipping desktop build on cloud\"",
-    "electron:dev": "ELECTRON_DEV=1 electron .",
-    "dist": "electron-builder --mac",
-    "make:icns":"bash scripts/generate_icns.sh",
     "migrate:pg": "node scripts/migrate_to_pg.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -33,24 +29,5 @@
     ,"multer": "^1.4.5-lts.1"
   }
   ,
-  "devDependencies": {
-    "electron": "^25.0.0",
-    "electron-builder": "^24.0.0"
-  },
-  "build": {
-    "appId": "com.vibematch.app",
-    "productName": "VibeMatch",
-    "directories": {
-      "output": "dist",
-      "buildResources": "public/assets"
-    },
-    "files": [
-      "**/*",
-      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
-    ],
-    "mac": {
-      "target": ["dmg"],
-      "icon": "public/assets/icon.icns"
-    }
-  }
+  "devDependencies": {}
 }

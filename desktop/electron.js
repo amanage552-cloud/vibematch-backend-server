@@ -15,21 +15,19 @@ function createWindow() {
       sandbox: false,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, 'public', 'assets', 'icon.png')
+    icon: path.join(__dirname, '..', 'public', 'assets', 'icon.png')
   });
 
-  // load remote dev server or local file
   if (isDev) {
     win.loadURL('http://localhost:3000/app.html');
   } else {
-    win.loadFile(path.join(__dirname, 'public', 'app.html'));
+    win.loadFile(path.join(__dirname, '..', 'public', 'app.html'));
   }
 
   win.once('ready-to-show', () => {
     win.show();
   });
 
-  // prevent navigation outside
   win.webContents.on('will-navigate', (e, url) => {
     const allowed = ['file://', 'http://localhost'];
     if (!allowed.some(a => url.startsWith(a))) e.preventDefault();
