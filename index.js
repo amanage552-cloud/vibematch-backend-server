@@ -4,12 +4,67 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cron = require('node-cron');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(cors({ origin: '*' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (_req, res) => {
-  res.type('text/plain').send('Server is running');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Simple API endpoints for dashboard data
+app.get('/api/profiles', (_req, res) => {
+  const profiles = [
+    {
+      id: 'mia',
+      name: 'Mia',
+      age: 27,
+      match: 94,
+      interests: ['Music', 'Travel', 'Art'],
+      photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80',
+      bio: 'Creative strategist. Late-night conversation lover.'
+    },
+    {
+      id: 'leo',
+      name: 'Leo',
+      age: 30,
+      match: 91,
+      interests: ['Hiking', 'Cooking'],
+      photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=80',
+      bio: 'Weekend hiker and creative projects enthusiast.'
+    },
+    {
+      id: 'aria',
+      name: 'Aria',
+      age: 24,
+      match: 96,
+      interests: ['Music', 'City life'],
+      photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80',
+      bio: 'Music lover and city explorer.'
+    },
+    {
+      id: 'jude',
+      name: 'Jude',
+      age: 28,
+      match: 89,
+      interests: ['Cooking', 'Outdoors'],
+      photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80',
+      bio: 'Chef at heart and outdoor enthusiast.'
+    }
+  ];
+
+  res.json(profiles);
+});
+
+app.get('/api/online', (_req, res) => {
+  const online = [
+    { id: 'mia', name: 'Mia', avatar: '/images/ava1.jpg' },
+    { id: 'noah', name: 'Noah', avatar: '/images/ava2.jpg' },
+    { id: 'siena', name: 'Siena', avatar: '/images/ava3.jpg' }
+  ];
+  res.json(online);
 });
 
 const server = http.createServer(app);
@@ -185,6 +240,17 @@ io.on('connection', (socket) => {
 
     const roomID = messageData.roomID;
     socket.to(roomID).emit('receive_message', messageData);
+  });
+
+  // Simple signaling relay for WebRTC: forward 'signal' events to the room
+  socket.on('signal', (data) => {
+    try {
+      const roomID = data?.roomID;
+      if (!roomID) return;
+      socket.to(roomID).emit('signal', { from: socket.id, signal: data.signal });
+    } catch (err) {
+      console.warn('Error relaying signal:', err.message);
+    }
   });
 
   socket.on('typing', (data) => {
