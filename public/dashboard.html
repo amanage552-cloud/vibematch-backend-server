@@ -90,12 +90,41 @@
 
     <!-- Mobile Bottom Nav -->
     <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] md:hidden bg-gray-900/80 border border-gray-800 rounded-2xl p-2 flex justify-between px-4">
-      <button class="text-gray-300">Home</button>
-      <button class="text-gray-300">Search</button>
-      <button class="bg-green-400 text-black px-4 py-2 rounded-xl">+</button>
-      <button class="text-gray-300">Messages</button>
-      <button class="text-gray-300">Profile</button>
+      <button id="bottomHomeBtn" class="text-[#A3E635]">🏠</button>
+      <button id="bottomDiscoverBtn" class="text-gray-300">🗺️</button>
+      <button id="bottomCenterBtn" class="bg-[#A3E635] text-black px-4 py-2 rounded-xl">＋</button>
+      <button id="bottomMessagesBtn" class="text-gray-300">💬</button>
+      <button id="bottomProfileBtn" class="text-gray-300">👤</button>
     </nav>
+
+    <!-- Media Upload Modal (shared) -->
+    <div id="mediaUploadModal" style="display:none;position:fixed;inset:0;background:rgba(2,2,2,0.7);z-index:80;align-items:center;justify-content:center;">
+      <div style="width:92%;max-width:520px;background:linear-gradient(180deg,#071018,#000);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:800;color:#E6FCD9">Create</div>
+          <button id="closeUploadModal" style="background:transparent;border:0;color:#9AB39A;font-weight:700">Close</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="uploadTab" data-tab="snap" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)">Snap</button>
+          <button class="uploadTab" data-tab="reel" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)">Reel</button>
+          <button class="uploadTab" data-tab="post" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)">Post</button>
+        </div>
+        <div id="uploadSnap" style="display:none">
+          <input id="snapImageInput" type="file" accept="image/*" />
+          <div style="margin-top:8px"><button id="submitSnapBtn" class="px-4 py-2 rounded bg-[#A3E635] text-black">Upload Snap</button></div>
+        </div>
+        <div id="uploadReel" style="display:none">
+          <input id="reelVideoInput" type="file" accept="video/mp4,video/webm" />
+          <div style="margin-top:8px"><input id="reelCaption" placeholder="Caption (optional)" style="width:100%;padding:8px;border-radius:8px;background:#071018;border:1px solid rgba(255,255,255,0.03);color:#E6EEF3"/></div>
+          <div style="margin-top:8px"><button id="submitReelBtn" class="px-4 py-2 rounded bg-[#A3E635] text-black">Upload Reel</button></div>
+        </div>
+        <div id="uploadPost" style="display:none">
+          <input id="postImageInput2" type="file" accept="image/*" />
+          <div style="margin-top:8px"><textarea id="postCaption2" placeholder="Write a caption..." style="width:100%;min-height:80px;padding:8px;border-radius:8px;background:#071018;border:1px solid rgba(255,255,255,0.03);color:#E6EEF3"></textarea></div>
+          <div style="margin-top:8px"><button id="submitPostBtn2" class="px-4 py-2 rounded bg-[#A3E635] text-black">Create Post</button></div>
+        </div>
+      </div>
+    </div>
 
     <script src="/dashboard.js"></script>
 

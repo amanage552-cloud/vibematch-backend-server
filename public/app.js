@@ -196,4 +196,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetch('/api/reels', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
     if(res.ok){ alert('Uploaded Reel'); const newReels = await fetchReels(); reelsContainer.innerHTML=''; newReels.forEach(r=> reelsContainer.appendChild(makeReelNode(r))); } else { const j = await res.json(); alert('Upload failed: '+(j.error||res.statusText)); }
   });
+
+  // Bottom dock wiring
+  const bottomHomeBtn = document.getElementById('bottomHomeBtn');
+  const bottomCenterBtn = document.getElementById('bottomCenterBtn');
+  const bottomDiscoverBtn = document.getElementById('bottomDiscoverBtn');
+  const bottomMessagesBtn = document.getElementById('bottomMessagesBtn');
+  const bottomProfileBtn = document.getElementById('bottomProfileBtn');
+  const mediaUploadModal = document.getElementById('mediaUploadModal');
+  const closeUploadModal = document.getElementById('closeUploadModal');
+  const uploadTabs = document.querySelectorAll('.uploadTab');
+  const uploadSnap = document.getElementById('uploadSnap');
+  const uploadReel = document.getElementById('uploadReel');
+  const uploadPost = document.getElementById('uploadPost');
+  const snapImageInput = document.getElementById('snapImageInput');
+  const submitSnapBtn = document.getElementById('submitSnapBtn');
+  const reelVideoInput = document.getElementById('reelVideoInput');
+  const submitReelBtn = document.getElementById('submitReelBtn');
+  const postImageInput2 = document.getElementById('postImageInput2');
+  const submitPostBtn2 = document.getElementById('submitPostBtn2');
+
+  function showUploadTab(tab){ uploadSnap.style.display='none'; uploadReel.style.display='none'; uploadPost.style.display='none'; if(tab==='snap') uploadSnap.style.display='block'; if(tab==='reel') uploadReel.style.display='block'; if(tab==='post') uploadPost.style.display='block'; }
+
+  uploadTabs.forEach(t=> t.addEventListener('click',(e)=>{ uploadTabs.forEach(x=>x.style.boxShadow='none'); e.currentTarget.style.boxShadow='inset 0 0 0 2px rgba(163,230,53,0.12)'; showUploadTab(e.currentTarget.dataset.tab); }));
+  bottomCenterBtn && bottomCenterBtn.addEventListener('click', ()=>{ mediaUploadModal.style.display='flex'; showUploadTab('reel'); });
+  closeUploadModal && closeUploadModal.addEventListener('click', ()=>{ mediaUploadModal.style.display='none'; });
+  bottomHomeBtn && bottomHomeBtn.addEventListener('click', ()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }); reelsViewer && (reelsViewer.style.display='none'); });
+
+  // Submit handlers for upload modal
+  submitSnapBtn && submitSnapBtn.addEventListener('click', async ()=>{
+    const f = snapImageInput.files[0]; if(!f){ alert('Select an image'); return; }
+    const reader = new FileReader(); reader.onload = async ()=>{
+      const dataUrl = reader.result;
+      const token = localStorage.getItem('vibematch_token');
+      const res = await fetch('/api/stories', { method:'POST', headers: { 'Content-Type':'application/json', ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: JSON.stringify({ dataUrl, caption: '' }) });
+      if(res.ok){ alert('Snap uploaded'); mediaUploadModal.style.display='none'; } else { alert('Upload failed'); }
+    }; reader.readAsDataURL(f);
+  });
+
+  submitReelBtn && submitReelBtn.addEventListener('click', async ()=>{
+    const f = reelVideoInput.files[0]; if(!f){ alert('Select a video'); return; }
+    const fd = new FormData(); fd.append('video', f); fd.append('caption', document.getElementById('reelCaption').value||'');
+    const token = localStorage.getItem('vibematch_token');
+    const res = await fetch('/api/reels', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
+    if(res.ok){ alert('Reel uploaded'); mediaUploadModal.style.display='none'; } else { const j = await res.json().catch(()=>{}); alert('Upload failed: '+(j&&j.error?j.error:'error')); }
+  });
+
+  submitPostBtn2 && submitPostBtn2.addEventListener('click', async ()=>{
+    const f = postImageInput2.files[0]; if(!f){ alert('Select an image'); return; }
+    const fd = new FormData(); fd.append('image', f); fd.append('caption', document.getElementById('postCaption2').value||'');
+    const token = localStorage.getItem('vibematch_token');
+    const res = await fetch('/api/posts', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
+    if(res.ok){ alert('Post created'); mediaUploadModal.style.display='none'; } else { const j = await res.json().catch(()=>{}); alert('Post failed: '+(j&&j.error?j.error:'error')); }
+  });
 });
