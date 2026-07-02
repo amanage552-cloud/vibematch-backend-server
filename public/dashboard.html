@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VibeMatch Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600;700&display=swap');
+      :root{
+        --bg:#0B0C10;
+        --accent:#A3E635;
+        --accent-strong:#9AE64D;
+        --muted:#8A939B;
+      }
+      html,body{height:100%;}
+      body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; background:var(--bg); color:#E6EEF3}
+      .brand{font-family:Poppins, Inter, sans-serif; font-weight:700}
+      .neon{box-shadow:0 6px 20px rgba(163,230,53,0.12)}
+      .glow-hover:hover{box-shadow:0 6px 30px rgba(163,230,53,0.28); transform:translateY(-3px);}
+      .accent-pill{background:linear-gradient(90deg,var(--accent),var(--accent-strong)); color:#07120a}
+    </style>
+  </head>
+  <body class="antialiased">
+    <div class="min-h-screen flex">
+      <!-- Left Sidebar -->
+      <aside class="hidden md:flex md:flex-col w-64 p-6 border-r border-gray-800">
+        <div class="brand text-2xl mb-8">VibeMatch</div>
+        <nav class="flex flex-col gap-4 text-sm text-gray-300">
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Home</a>
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Explore</a>
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Messages</a>
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Matches</a>
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Notifications</a>
+          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Profile</a>
+        </nav>
+      </aside>
+
+      <!-- Main Feed -->
+      <main class="flex-1 p-6 overflow-y-auto">
+        <!-- Stories Row -->
+        <section class="mb-6">
+          <div class="flex items-center gap-4 overflow-x-auto py-2">
+            <!-- example avatar -->
+            <div class="flex-none w-20 text-center">
+              <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-200 ring-2 ring-gray-900"></div>
+              <div class="text-xs mt-2 text-gray-300">Mia</div>
+            </div>
+            <div class="flex-none w-20 text-center">
+              <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-200 ring-2 ring-gray-900"></div>
+              <div class="text-xs mt-2 text-gray-300">Noah</div>
+            </div>
+            <div class="flex-none w-20 text-center">
+              <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-200 ring-2 ring-gray-900"></div>
+              <div class="text-xs mt-2 text-gray-300">Siena</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Feed Cards -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- profile card -->
+          <article class="rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900/60 to-black border border-gray-800 neon">
+            <div class="h-80 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80')"></div>
+            <div class="p-4 flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-3">
+                  <h3 class="text-lg font-bold">Mia, 27</h3>
+                  <span class="text-xs ml-2 px-3 py-1 rounded-full accent-pill text-xs">94% Match</span>
+                </div>
+                <p class="text-sm text-gray-400 mt-2">Creative strategist. Late-night conversation lover.</p>
+                <div class="flex gap-2 mt-3">
+                  <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">Music</span>
+                  <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">Travel</span>
+                  <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">Art</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button class="px-4 py-2 rounded-lg bg-green-400 text-black font-bold glow-hover">Chat</button>
+                <button class="px-4 py-2 rounded-lg bg-transparent border border-gray-700 text-gray-300">View</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- duplicate card -->
+          <article class="rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900/60 to-black border border-gray-800 neon">
+            <div class="h-80 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=80')"></div>
+            <div class="p-4 flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-3">
+                  <h3 class="text-lg font-bold">Leo, 30</h3>
+                  <span class="text-xs ml-2 px-3 py-1 rounded-full accent-pill text-xs">91% Match</span>
+                </div>
+                <p class="text-sm text-gray-400 mt-2">Weekend hiker. Creative projects.</p>
+                <div class="flex gap-2 mt-3">
+                  <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">Hiking</span>
+                  <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">Cooking</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button class="px-4 py-2 rounded-lg bg-green-400 text-black font-bold glow-hover">Chat</button>
+                <button class="px-4 py-2 rounded-lg bg-transparent border border-gray-700 text-gray-300">View</button>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <!-- Right Panel -->
+      <aside class="hidden lg:block w-80 p-6 border-l border-gray-800">
+        <div class="text-sm text-gray-300">Suggested Vibes</div>
+        <div class="mt-4 space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-gray-800"></div>
+            <div>
+              <div class="text-sm font-semibold">Aria</div>
+              <div class="text-xs text-gray-500">96% match</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-gray-800"></div>
+            <div>
+              <div class="text-sm font-semibold">Jude</div>
+              <div class="text-xs text-gray-500">89% match</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] md:hidden bg-gray-900/80 border border-gray-800 rounded-2xl p-2 flex justify-between px-4">
+      <button class="text-gray-300">Home</button>
+      <button class="text-gray-300">Search</button>
+      <button class="bg-green-400 text-black px-4 py-2 rounded-xl">+</button>
+      <button class="text-gray-300">Messages</button>
+      <button class="text-gray-300">Profile</button>
+    </nav>
+
+  </body>
+</html>
