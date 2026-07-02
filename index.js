@@ -36,6 +36,7 @@ if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
 
 const REELS_FILE = path.join(dataDir, 'reels.json');
 const POSTS_FILE = path.join(dataDir, 'posts.json');
+const ENGAGEMENTS_FILE = path.join(dataDir, 'engagements.json');
 
 // multer setup
 const storage = multer.diskStorage({
@@ -94,6 +95,8 @@ async function addReelRecord(rec){ if (process.env.DATABASE_URL) return await db
 async function getReels(){ if (process.env.DATABASE_URL) return await db.getReels(); const arr = loadJsonSafe(REELS_FILE); return arr.sort((a,b)=>b.created_at-a.created_at); }
 async function addPostRecord(rec){ if (process.env.DATABASE_URL) return await db.addPost(rec); const arr = loadJsonSafe(POSTS_FILE); arr.push(rec); saveJsonSafe(POSTS_FILE, arr); }
 async function getPosts(){ if (process.env.DATABASE_URL) return await db.getPosts(); const arr = loadJsonSafe(POSTS_FILE); return arr.sort((a,b)=>b.created_at-a.created_at); }
+async function addEngagementRecord(ev){ if (process.env.DATABASE_URL) return await db.addEngagement(ev); const arr = loadJsonSafe(ENGAGEMENTS_FILE); arr.push(ev); saveJsonSafe(ENGAGEMENTS_FILE, arr); }
+async function getEngagementsForTarget(target_type, target_id){ if (process.env.DATABASE_URL) return await db.getEngagementsForTarget(target_type, target_id); const arr = loadJsonSafe(ENGAGEMENTS_FILE); return arr.filter(e=>e.target_type===target_type && e.target_id===target_id).sort((a,b)=>b.created_at-a.created_at); }
 
 app.get('/', (_req, res) => {
   res.type('text').send('Server is running');
@@ -141,6 +144,79 @@ app.get('/api/profiles', (_req, res) => {
   ];
 
   res.json(profiles);
+});
+
+// Enhanced profiles endpoint with engagement-scoring/ranking
+app.get('/api/profiles', async (_req, res) => {
+  try {
+    // base profiles (could be from DB); for now reuse static list
+    const baseProfiles = [
+      {
+        id: 'mia',
+        name: 'Mia',
+        age: 27,
+        match: 94,
+        interests: ['Music', 'Travel', 'Art'],
+        photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80',
+        bio: 'Creative strategist. Late-night conversation lover.'
+      },
+      {
+        id: 'leo',
+        name: 'Leo',
+        age: 30,
+        match: 91,
+        interests: ['Hiking', 'Cooking'],
+        photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=80',
+        bio: 'Weekend hiker and creative projects enthusiast.'
+      },
+      {
+        id: 'aria',
+        name: 'Aria',
+        age: 24,
+        match: 96,
+        interests: ['Music', 'City life'],
+        photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80',
+        bio: 'Music lover and city explorer.'
+      },
+      {
+        id: 'jude',
+        name: 'Jude',
+        age: 28,
+        match: 89,
+        interests: ['Cooking', 'Outdoors'],
+        photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80',
+        bio: 'Chef at heart and outdoor enthusiast.'
+      }
+    ];
+
+    // compute score for each profile
+    const scored = await Promise.all(baseProfiles.map(async (p) => {
+      // retention: average view duration (ms) from engagements
+      const engagements = await getEngagementsForTarget('profile', p.id);
+      const viewEvents = engagements.filter(e => e.event_type === 'view' && e.duration_ms);
+      const avgDuration = viewEvents.length? Math.round(viewEvents.reduce((s,ev)=>s+ (ev.duration_ms||0),0)/viewEvents.length) : 0;
+      // normalize avgDuration to 0-1 over a 30s window
+      const normRetention = Math.min(1, avgDuration / 30000);
+      // proximity: mock (closer = higher). We'll random small distances for demo
+      const distKm = (Math.abs(p.name.charCodeAt(0) - 77) % 50) / 10; // pseudo distance
+      const proximityScore = Math.max(0, 1 - Math.min(1, distKm/10));
+      // base match normalized
+      const baseMatch = (p.match || 50) / 100;
+      // dopamine refresh factor: favor recent high-frequency interactions
+      const recentCount = engagements.filter(e=>Date.now()-e.created_at < 1000*60*60*24).length;
+      const recencyBoost = Math.min(1, recentCount / 10);
+
+      const score = Math.round((baseMatch * 0.5 + normRetention * 0.3 + proximityScore * 0.15 + recencyBoost * 0.05) * 100);
+      return Object.assign({}, p, { score, avg_view_ms: avgDuration });
+    }));
+
+    // sort by score desc
+    scored.sort((a,b)=>b.score - a.score);
+    res.json(scored);
+  } catch (err) {
+    console.error('profiles scoring error', err.message);
+    res.status(500).json([]);
+  }
 });
 
 app.get('/api/online', (_req, res) => {
@@ -478,6 +554,20 @@ app.post('/api/stories', async (req, res) => {
   }
 });
 
+// engagement event reporting: view, click, etc.
+app.post('/api/engagements', async (req, res) => {
+  try{
+    const { target_type, target_id, event_type, duration_ms } = req.body || {};
+    const payload = authFromHeader(req);
+    const userId = payload?payload.sub:null;
+    const id = require('crypto').randomUUID();
+    const created = Date.now();
+    const ev = { id, user_id: userId, target_type, target_id, event_type, duration_ms: duration_ms||0, created_at: created };
+    await addEngagementRecord(ev);
+    return res.json({ success:true, id });
+  }catch(err){ console.error('engagement post error', err); return res.status(500).json({ error:'server' }); }
+});
+
 // Reels endpoints: upload and list
 app.post('/api/reels', upload.single('video'), async (req, res) => {
   try {
@@ -500,7 +590,18 @@ app.post('/api/reels', upload.single('video'), async (req, res) => {
 app.get('/api/reels', async (_req, res) => {
   try{
     const rows = await getReels();
-    res.json(rows);
+    // compute a score per reel using engagement retention
+    const scored = await Promise.all(rows.map(async (r) => {
+      const engagements = await getEngagementsForTarget('reel', r.id);
+      const viewEvents = engagements.filter(e=>e.event_type==='view' && e.duration_ms);
+      const avgDuration = viewEvents.length? Math.round(viewEvents.reduce((s,ev)=>s+(ev.duration_ms||0),0)/viewEvents.length):0;
+      const normRetention = Math.min(1, avgDuration/30000);
+      const recencyBoost = Math.min(1, (Date.now() - (r.created_at||0)) / (1000*60*60*24) < 3 ? 1 : 0);
+      const score = Math.round((normRetention*0.6 + recencyBoost*0.4) * 100);
+      return Object.assign({}, r, { score, avg_view_ms: avgDuration });
+    }));
+    scored.sort((a,b)=>b.score - a.score);
+    res.json(scored);
   }catch(e){ res.status(500).json([]); }
 });
 

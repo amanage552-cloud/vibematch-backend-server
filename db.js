@@ -51,6 +51,16 @@ async function ensureTables() {
         created_at BIGINT
       );
 
+      CREATE TABLE IF NOT EXISTS engagements (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id),
+        target_type TEXT,
+        target_id UUID,
+        event_type TEXT,
+        duration_ms INT,
+        created_at BIGINT
+      );
+
       CREATE TABLE IF NOT EXISTS likes (
         id UUID PRIMARY KEY,
         from_user UUID REFERENCES users(id),
@@ -118,6 +128,18 @@ async function getPosts(){
   return r.rows;
 }
 
+async function addEngagement(ev){
+  if (!pool) throw new Error('DB not configured');
+  const q = 'INSERT INTO engagements(id,user_id,target_type,target_id,event_type,duration_ms,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)';
+  await pool.query(q, [ev.id, ev.user_id || null, ev.target_type, ev.target_id || null, ev.event_type, ev.duration_ms || 0, ev.created_at]);
+}
+
+async function getEngagementsForTarget(target_type, target_id){
+  if (!pool) throw new Error('DB not configured');
+  const r = await pool.query('SELECT id,user_id,target_type,target_id,event_type,duration_ms,created_at FROM engagements WHERE target_type=$1 AND target_id=$2 ORDER BY created_at DESC', [target_type, target_id]);
+  return r.rows;
+}
+
 async function getRecentStories(){
   if (!pool) throw new Error('DB not configured');
   const cutoff = Date.now() - 24*60*60*1000;
@@ -148,4 +170,4 @@ async function purgeOldLikes(){
   await pool.query('DELETE FROM likes WHERE created_at <= $1', [cutoff]);
 }
 
-module.exports = { init, addUser, findUserByEmail, findUserById, addStory, getRecentStories, purgeOldStories, addLike, hasLike, purgeOldLikes, addReel, getReels, addPost, getPosts };
+module.exports = { init, addUser, findUserByEmail, findUserById, addStory, getRecentStories, purgeOldStories, addLike, hasLike, purgeOldLikes, addReel, getReels, addPost, getPosts, addEngagement, getEngagementsForTarget };
