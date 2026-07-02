@@ -8,6 +8,7 @@
     "start": "node index.js",
     "electron:dev": "ELECTRON_DEV=1 electron .",
     "dist": "electron-builder --mac"
+    ,"make:icns":"bash scripts/generate_icns.sh"
     "migrate:pg": "node scripts/migrate_to_pg.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
