@@ -23,49 +23,40 @@
   </head>
   <body class="antialiased">
     <div class="min-h-screen flex">
-      <!-- Left Sidebar -->
-      <aside class="hidden md:flex md:flex-col w-64 p-6 border-r border-gray-800">
-        <div class="brand text-2xl mb-8">VibeMatch</div>
-        <nav class="flex flex-col gap-4 text-sm text-gray-300">
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Home</a>
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Explore</a>
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Messages</a>
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Matches</a>
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Notifications</a>
-          <a class="py-2 px-3 rounded-lg hover:bg-gray-800">Profile</a>
-        </nav>
+      <!-- Left fixed narrow navbar -->
+      <aside class="w-20 p-4 bg-[#050607] border-r border-gray-800 flex flex-col items-center gap-4">
+        <div class="brand text-xl text-[#A3E635]">VM</div>
+        <button class="p-3 rounded-lg text-[#A3E635]">🏠</button>
+        <button class="p-3 rounded-lg text-[#A3E635]">🔍</button>
+        <button class="p-3 rounded-lg text-[#A3E635]">💬</button>
+        <div style="flex:1"></div>
+        <button class="p-3 rounded-lg text-[#A3E635]">⚙</button>
       </aside>
 
-      <!-- Main Feed -->
-      <main class="flex-1 p-6 overflow-y-auto">
-        <!-- Stories Row (populated dynamically) -->
-        <section class="mb-6">
-          <div id="storiesRow" class="flex items-center gap-4 overflow-x-auto py-2"></div>
-        </section>
+      <!-- Center area with stories and profile player -->
+      <main class="flex-1 flex flex-col">
+        <div class="flex items-center gap-4 p-4 border-b border-gray-800">
+          <h3 class="text-sm font-bold text-[#A3E635]">Stories</h3>
+          <div id="storiesRow" class="flex gap-3 overflow-x-auto py-2"></div>
+        </div>
 
-        <!-- Feed Cards (populated dynamically) -->
-        <section id="feedGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></section>
-      </main>
-
-      <!-- Right Panel -->
-      <aside class="hidden lg:block w-80 p-6 border-l border-gray-800">
-        <div class="text-sm text-gray-300">Suggested Vibes</div>
-        <div class="mt-4 space-y-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-gray-800"></div>
-            <div>
-              <div class="text-sm font-semibold">Aria</div>
-              <div class="text-xs text-gray-500">96% match</div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-gray-800"></div>
-            <div>
-              <div class="text-sm font-semibold">Jude</div>
-              <div class="text-xs text-gray-500">89% match</div>
+        <div class="flex-1 flex items-center justify-center bg-black">
+          <div style="width:90%;height:85%;position:relative">
+            <video id="profilePlayer" class="w-full h-full rounded-lg bg-black object-cover" autoplay muted loop playsinline></video>
+            <canvas id="glCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:0"></canvas>
+            <canvas id="overlayCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:1"></canvas>
+            <div style="position:absolute;left:18px;bottom:18px;color:#E9FCEB">
+              <div id="profileName" style="font-weight:800;font-size:20px">Guest</div>
+              <div style="margin-top:6px">Age <span id="profileAge">—</span> <span id="profileMatch" class="px-3 py-1 rounded-full text-black" style="background:linear-gradient(90deg,#A3E635,#9AE64D);font-weight:800">—%</span></div>
             </div>
           </div>
         </div>
+      </main>
+
+      <!-- Right column compact -->
+      <aside class="w-80 p-4 bg-[#06070a] border-l border-gray-800">
+        <h4 class="text-sm font-bold text-[#A3E635]">Nearby</h4>
+        <div id="nearbyList" class="mt-4 space-y-3">Loading…</div>
       </aside>
     </div>
 

@@ -1,150 +1,89 @@
-// Main app logic: camera stream, filter selection, swipe navigation and deck
+// Main app logic: stories slider, central profile player, and auth placeholders
 document.addEventListener('DOMContentLoaded', async () => {
-  const swipeContainer = document.getElementById('swipeContainer');
-  const cameraVideo = document.getElementById('cameraVideo');
-  const overlayCanvas = document.getElementById('overlayCanvas');
-  const filterTray = document.getElementById('filterTray');
-  const captureBtn = document.getElementById('captureBtn');
-  const cardStack = document.getElementById('cardStack');
-  const matchModal = document.getElementById('matchModal');
-  const matchName = document.getElementById('matchName');
-  const closeModal = document.getElementById('closeModal');
-
-  // swipe positions: 0 = chat (left), 1 = camera (center), 2 = deck (right)
-  let pos = 1;
-  function showPos(p){
-    pos = p; swipeContainer.style.transform = `translateX(-${p*100}vw)`;
-  }
-
-  // touch navigation
-  let startX=null; let deltaX=0;
-  swipeContainer.addEventListener('touchstart',(e)=>{startX=e.touches[0].clientX});
-  swipeContainer.addEventListener('touchmove',(e)=>{ if(startX!==null){deltaX=e.touches[0].clientX-startX; swipeContainer.style.transform=`translateX(calc(-${pos*100}vw + ${deltaX}px))`} });
-  swipeContainer.addEventListener('touchend',(e)=>{ if(startX!==null){ if(deltaX>80) showPos(Math.max(0,pos-1)); else if(deltaX<-80) showPos(Math.min(2,pos+1)); else showPos(pos); } startX=null; deltaX=0; });
-
-  // initialize camera
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
-    cameraVideo.srcObject = stream;
-    cameraVideo.play();
-    // initialize MediaPipe filters pipeline (if available)
-    const glCanvas = document.getElementById('glCanvas');
-    const postStoryBtn = document.getElementById('postStoryBtn');
-    if (window.Filters && typeof Filters.init === 'function') {
-      Filters.init(cameraVideo, glCanvas, overlayCanvas);
-    } else if (window.Filters && typeof Filters.initFaceTrackingPlaceholder === 'function'){
-      Filters.initFaceTrackingPlaceholder && Filters.initFaceTrackingPlaceholder();
-    }
-  }catch(err){console.error('Camera error',err); alert('Camera access required for app');}
-
-  // Post to Story button behavior
-  const postStoryBtn = document.getElementById('postStoryBtn');
-  if (postStoryBtn) {
-    postStoryBtn.addEventListener('click', async () => {
-      try {
-        // prefer GL canvas snapshot if available
-        const glCanvasEl = document.getElementById('glCanvas');
-        let dataUrl = null;
-        if (glCanvasEl && glCanvasEl.toDataURL) dataUrl = glCanvasEl.toDataURL('image/jpeg', 0.9);
-        if (!dataUrl) {
-          const c = document.createElement('canvas'); c.width = cameraVideo.videoWidth; c.height = cameraVideo.videoHeight; c.getContext('2d').drawImage(cameraVideo,0,0,c.width,c.height); dataUrl = c.toDataURL('image/jpeg',0.9);
-        }
-        const token = localStorage.getItem('vibematch_token');
-        const resp = await fetch('/api/stories', { method: 'POST', headers: {'Content-Type':'application/json', ...(token?{ Authorization: 'Bearer '+token }:{})}, body: JSON.stringify({ dataUrl, caption: '' }) });
-        const j = await resp.json();
-        if (resp.ok) { alert('Posted to Story'); } else { alert('Story upload failed: '+(j.error||resp.status)); }
-      } catch (err) { console.error('story post',err); alert('Upload failed'); }
-    });
-  }
-
-  // Socket.IO live integration
-  const socket = (window.io && io()) || null;
-  // auth UI
-  let localUser = null; // {id,email,name}
+  const storiesRow = document.getElementById('storiesRow');
+  const profilePlayer = document.getElementById('profilePlayer');
+  const profileName = document.getElementById('profileName');
+  const profileAge = document.getElementById('profileAge');
+  const profileMatch = document.getElementById('profileMatch');
   const loginOverlay = document.getElementById('loginOverlay');
-  const emailInput = document.getElementById('emailInput');
-  const passwordInput = document.getElementById('passwordInput');
-  const loginBtn = document.getElementById('loginBtn');
-  const signupBtn = document.getElementById('signupBtn');
 
   function showLogin(){ if(loginOverlay) loginOverlay.style.display='flex'; }
   function hideLogin(){ if(loginOverlay) loginOverlay.style.display='none'; }
 
   async function apiPost(path, body){ const token = localStorage.getItem('vibematch_token'); const res = await fetch(path,{method:'POST',headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}: {})}, body: JSON.stringify(body)}); return res; }
 
+  // Auth UI wiring (phone/password)
+  // read token from URL if present (after OAuth redirect)
+  try{
+    const urlParams = new URLSearchParams(window.location.search);
+    const maybeToken = urlParams.get('token');
+    if (maybeToken) { localStorage.setItem('vibematch_token', maybeToken); history.replaceState({}, document.title, window.location.pathname); }
+  }catch(e){}
+
+  const phoneInput = document.getElementById('phoneInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
   loginBtn && loginBtn.addEventListener('click', async ()=>{
-    try{ const res = await apiPost('/api/login',{ email: emailInput.value, password: passwordInput.value }); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); localUser=j.user; hideLogin(); if(socket) socket.emit('identify',{ token: j.token }); } else { alert(j.error||'login failed'); } }catch(e){console.error(e);alert('login error'); }
+    try{ const res = await apiPost('/api/login',{ phone: phoneInput.value, password: passwordInput.value }); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); hideLogin(); } else { alert(j.error||'login failed'); } }catch(e){console.error(e);alert('login error'); }
   });
-
   signupBtn && signupBtn.addEventListener('click', async ()=>{
-    try{ const res = await apiPost('/api/signup',{ email: emailInput.value, password: passwordInput.value, name: emailInput.value.split('@')[0]}); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); localUser=j.user; hideLogin(); if(socket) socket.emit('identify',{ token: j.token }); } else { alert(j.error||'signup failed'); } }catch(e){console.error(e);alert('signup error'); }
+    try{ const res = await apiPost('/api/signup',{ phone: phoneInput.value, password: passwordInput.value, name: phoneInput.value.replace(/\D/g,'') }); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); hideLogin(); } else { alert(j.error||'signup failed'); } }catch(e){console.error(e);alert('signup error'); }
   });
 
-  // require login
-  if (!localStorage.getItem('vibematch_token')) showLogin(); else { const token = localStorage.getItem('vibematch_token'); if (socket) socket.emit('identify',{ token }); }
+  // Google OAuth: redirect to server route
+  const googleBtn = document.getElementById('googleBtn');
+  googleBtn && googleBtn.addEventListener('click', ()=>{ window.location.href = '/auth/google'; });
 
-  if (socket) { socket.on('matched', (data) => { const otherId = data?.with; if(!otherId) return; const cardProfile = profilesById[otherId]; matchName.textContent = cardProfile ? cardProfile.name : otherId; matchModal.style.display='flex'; }); }
+  // show login if not authenticated
+  if (!localStorage.getItem('vibematch_token')) showLogin();
 
-  // filter selection
-  filterTray.querySelectorAll('.filter-bubble').forEach(b=>{
-    b.addEventListener('click',()=>{
-      filterTray.querySelectorAll('.filter-bubble').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      const mode=b.dataset.filter;
-      Filters.applyFilter(cameraVideo,mode);
-    });
-  });
+  // Load stories from backend and populate slider
+  async function loadStories(){
+    try{
+      const res = await fetch('/api/stories'); const items = await res.json();
+      if (!storiesRow) return;
+      storiesRow.innerHTML = '';
+      items.forEach((s, idx)=>{
+        const el = document.createElement('div'); el.className='story-item';
+        if(s.file_path && (s.file_path.endsWith('.mp4') || s.file_path.endsWith('.webm'))){
+          const v = document.createElement('video'); v.src = s.file_path; v.muted = true; v.loop = false; v.playsInline = true; v.preload='metadata'; el.appendChild(v);
+          v.addEventListener('click', ()=>{ v.currentTime = 0; v.play(); setTimeout(()=>v.pause(),15000); });
+        } else {
+          const img = document.createElement('img'); img.src = s.file_path || '/stories/placeholder.jpg'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; el.appendChild(img);
+          el.addEventListener('click', ()=>{ overlayStoryImage(s.file_path || img.src); });
+        }
+        storiesRow.appendChild(el);
+      });
+    }catch(err){ console.warn('loadStories', err); }
+  }
 
-  // capture action (photo snapshot)
-  captureBtn.addEventListener('click',()=>{
-    const canvas=document.createElement('canvas');
-    canvas.width=cameraVideo.videoWidth; canvas.height=cameraVideo.videoHeight;
-    const ctx=canvas.getContext('2d'); ctx.drawImage(cameraVideo,0,0,canvas.width,canvas.height);
-    const dataUrl=canvas.toDataURL('image/jpeg');
-    // show temporary preview or send to backend
-    const win = window.open(); if(win) { win.document.body.style.margin='0'; const img = new Image(); img.src=dataUrl; img.style.width='100%'; win.document.body.appendChild(img);} else { console.log('Captured',dataUrl.slice(0,80)); }
-  });
+  // show image overlay for stories with timeout
+  function overlayStoryImage(src){
+    const ov = document.createElement('div'); ov.style.position='fixed'; ov.style.inset='0'; ov.style.background='rgba(0,0,0,0.85)'; ov.style.display='grid'; ov.style.placeItems='center'; ov.style.zIndex=60;
+    const img = document.createElement('img'); img.src = src; img.style.maxWidth='90%'; img.style.maxHeight='90%'; ov.appendChild(img);
+    document.body.appendChild(ov);
+    setTimeout(()=>{ ov.remove(); }, 8000);
+    ov.addEventListener('click', ()=>ov.remove());
+  }
 
-  // build deck from /api/profiles
-  const profilesById = {};
-
-  async function loadDeck(){
+  // Load central profiles and initialize player
+  async function loadProfiles(){
     try{
       const res = await fetch('/api/profiles'); const profiles = await res.json();
-      profiles.reverse().forEach(p=>{ profilesById[p.id]=p; pushCard(p); });
-    }catch(err){console.error('Deck load error',err)}
+      if(!profiles || profiles.length===0) return;
+      const p = profiles[0];
+      if(profileName) profileName.textContent = p.name || 'Guest';
+      if(profileAge) profileAge.textContent = p.age || '—';
+      if(profileMatch) profileMatch.textContent = (p.match||'—') + '%';
+      if(profilePlayer){ profilePlayer.src = p.video || 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'; profilePlayer.play().catch(()=>{}); }
+    }catch(err){ console.warn('loadProfiles', err); }
   }
 
-  function pushCard(profile){
-    const el=document.createElement('div'); el.className='card'; el.style.backgroundImage=`url(${profile.photo})`;
-    el.dataset.id=profile.id;
-    el.innerHTML=`<div class="meta"><div class="flex items-center justify-between"><div><div class="text-xl font-bold">${profile.name}, ${profile.age}<span class='match-pill'>${profile.match}% Match</span></div><div class='tags'>${(profile.interests||[]).map(t=>`<span class='tag'>${t}</span>`).join('')}</div></div></div></div>`;
-    cardStack.appendChild(el);
-
-    // drag/swipe behavior
-    let start=null,shiftX=0; let offsetX=0; let offsetY=0;
-    function onStart(e){ start = e.type==='touchstart'? e.touches[0].clientX : e.clientX; document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onEnd); document.addEventListener('touchmove',onMove); document.addEventListener('touchend',onEnd); }
-    function onMove(e){ if(start===null) return; const x = e.type.includes('touch')? e.touches[0].clientX : e.clientX; shiftX = x - start; el.style.transform = `translate(${shiftX}px, ${Math.abs(shiftX)/4}px) rotate(${shiftX/20}deg)`; }
-    function onEnd(){ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onEnd); document.removeEventListener('touchmove',onMove); document.removeEventListener('touchend',onEnd); if(Math.abs(shiftX)>120){ // consider action
-        const liked = shiftX>0; el.style.transition='transform 300ms ease, opacity 300ms ease'; el.style.transform = `translate(${liked?1000:-1000}px,0) rotate(${liked?40:-40}deg)`; setTimeout(()=>{ el.remove(); if(liked) onLike(profile); },350);
-      } else { el.style.transition='transform 200ms ease'; el.style.transform='translate(0,0)'; setTimeout(()=>el.style.transition='none',250); }
-      start=null; shiftX=0;
-    }
-    el.addEventListener('mousedown', onStart); el.addEventListener('touchstart', onStart);
+  // populate nearby list
+  async function loadNearby(){
+    try{ const res = await fetch('/api/online'); const near = await res.json(); const el = document.getElementById('nearbyList'); if(el) el.innerHTML = near.map(n=>`<div style="padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02)">${n.name}</div>`).join(''); }catch(e){}
   }
 
-  function onLike(profile){
-    try{
-      if (!localUser){ alert('Sign in first'); showLogin(); return; }
-      if (socket) socket.emit('deck_like', { targetUserId: profile.id });
-    }catch(e){console.warn('like emit failed',e)}
-    if(profile.match>=90){ matchName.textContent=profile.name; matchModal.style.display='flex'; }
-  }
-
-  closeModal.addEventListener('click',()=>matchModal.style.display='none');
-  document.getElementById('msgBtn').addEventListener('click',()=>{ matchModal.style.display='none'; showPos(0); });
-
-  await loadDeck();
-  // init at camera center
-  showPos(1);
+  await Promise.all([loadStories(), loadProfiles(), loadNearby()]);
 });

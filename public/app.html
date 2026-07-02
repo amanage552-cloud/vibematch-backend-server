@@ -3,89 +3,95 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>VibeMatch — Live</title>
+    <title>VibeMatch — App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600;700&display=swap');
-      :root{--bg:#0B0C10;--accent:#A3E635;--accent-strong:#9AE64D}
-      html,body,#app{height:100%;}
-      body{margin:0;font-family:Inter,system-ui;background:var(--bg);color:#E6EEF3}
-      .panel{height:100vh;width:100vw}
-      .login-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,2,2,0.6);z-index:50}
-      .auth-card{background:linear-gradient(180deg,#071018,#000);padding:20px;border-radius:14px;border:1px solid rgba(255,255,255,0.04)}
-      .swipe-container{display:flex;transition:transform 300ms ease}
-      /* Camera styles */
-      .camera-wrap{position:relative;background:#000;display:flex;align-items:center;justify-content:center}
-      #cameraVideo{width:100%;height:100%;object-fit:cover}
-      .filter-tray{position:absolute;left:50%;transform:translateX(-50%);bottom:92px;display:flex;gap:10px;padding:8px}
-      .filter-bubble{width:64px;height:64px;border-radius:999px;background:rgba(255,255,255,0.04);display:grid;place-items:center;color:var(--accent);font-weight:700;border:1px solid rgba(163,230,53,0.08)}
-      .filter-bubble.active{box-shadow:0 8px 30px rgba(163,230,53,0.18);background:linear-gradient(90deg,var(--accent),var(--accent-strong));color:#04120a}
-      .capture-btn{position:absolute;left:50%;transform:translateX(-50%);bottom:22px;width:84px;height:84px;border-radius:999px;background:linear-gradient(180deg,var(--accent),var(--accent-strong));display:grid;place-items:center;box-shadow:0 20px 60px rgba(163,230,53,0.12);border:4px solid rgba(255,255,255,0.06)}
-      .top-bar{position:absolute;top:18px;left:18px;right:18px;display:flex;justify-between;align-items:center;pointer-events:none}
-      .top-bar .left,.top-bar .right{pointer-events:auto}
-      .small-btn{background:rgba(0,0,0,0.45);padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.04)}
-      /* Deck styles */
-      .deck-wrap{display:flex;align-items:center;justify-content:center;padding:36px}
-      .card-stack{position:relative;width:360px;height:640px}
-      .card{position:absolute;inset:0;border-radius:20px;background-size:cover;background-position:center;box-shadow:0 40px 90px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;justify-content:flex-end}
-      .card .meta{padding:18px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));border-bottom-left-radius:20px;border-bottom-right-radius:20px}
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+      :root{--bg:#07080a;--panel:#081018;--accent:#A3E635;--accent-strong:#9AE64D}
+      body{margin:0;background:var(--bg);color:#E6EEF3;font-family:Inter,system-ui}
+      /* Layout */
+      .app-shell{display:flex;height:100vh;overflow:hidden}
+      .left-nav{width:84px;background:linear-gradient(180deg,#050607,#071018);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;padding:12px;gap:12px}
+      .nav-icon{width:56px;height:56px;border-radius:12px;display:grid;place-items:center;background:transparent;color:var(--accent);border:1px solid rgba(163,230,53,0.06)}
+      .main-col{flex:1;display:flex;flex-direction:column}
+      .top-stories{height:120px;background:transparent;display:flex;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.02);gap:12px;overflow:hidden}
+      .stories-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+      .story-item{min-width:96px;height:96px;border-radius:14px;overflow:hidden;flex:0 0 auto;background:#000;border:1px solid rgba(255,255,255,0.03);display:grid;place-items:center}
+      .story-item video{width:100%;height:100%;object-fit:cover}
+      .content-area{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+      .profile-player{width:100%;height:100%;object-fit:cover}
+      .profile-overlay{position:absolute;left:20px;bottom:40px;z-index:30;color:#E9FCEB}
+      .profile-overlay .name{font-weight:800;font-size:22px}
       .match-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-strong));color:#04120a;font-weight:800;margin-left:8px}
-      .tags{display:flex;gap:8px;margin-top:8px}
-      .tag{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:12px}
-      /* Chat panel */
-      .chat-wrap{padding:20px;display:flex;flex-direction:column;height:100vh}
-      .chat-list{flex:1;overflow:auto}
-      /* Modal */
-      .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,2,2,0.6)}
-      .modal .inner{background:linear-gradient(180deg,#071018,#000);padding:28px;border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,0.7);border:1px solid rgba(163,230,53,0.08)}
-      @media(min-width:1024px){.panel{width:100vw}}
+      /* Right column (optional) */
+      .right-col{width:320px;background:linear-gradient(180deg,#06070a,#071018);border-left:1px solid rgba(255,255,255,0.02);padding:12px;overflow:auto}
+
+      /* Responsive mobile: collapse sidebar and right col, stories become sticky top */
+      @media(max-width:900px){
+        .app-shell{flex-direction:column}
+        .left-nav{display:flex;flex-direction:row;width:100%;height:64px;justify-content:center}
+        .top-stories{height:94px}
+        .right-col{display:none}
+      }
+
+      /* Auth overlay */
+      .login-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,2,2,0.6);z-index:50}
+      .auth-card{background:linear-gradient(180deg,#071018,#000);padding:20px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);min-width:320px}
+      .auth-row{display:flex;gap:8px;margin-top:8px}
     </style>
   </head>
   <body>
-    <div id="app">
-      <div id="swipeContainer" class="swipe-container" style="transform:translateX(-100vw)">
-        <!-- Left: Chat -->
-        <section id="chatPanel" class="panel chat-wrap bg-[#07080a]">
-          <div class="top-row flex items-center justify-between"><h2 class="text-xl font-bold">Chats</h2><div class="small-btn">New</div></div>
-          <div class="chat-list mt-4" id="chatList"></div>
-          <div class="mt-4"><input id="chatBox" class="w-full p-3 rounded-lg" placeholder="Send a snap (simulated)"></div>
-        </section>
+    <div class="app-shell">
+      <nav class="left-nav" aria-label="Main">
+        <div class="nav-icon">VM</div>
+        <div class="nav-icon">★</div>
+        <div class="nav-icon">⚙</div>
+        <div style="flex:1"></div>
+        <div id="hamburger" class="nav-icon">☰</div>
+      </nav>
 
-        <!-- Center: Camera -->
-        <section id="cameraPanel" class="panel camera-wrap">
-          <div class="top-bar"><div class="left small-btn">VibeMatch</div><div class="right small-btn">• Live</div></div>
-          <video id="cameraVideo" autoplay playsinline muted></video>
+      <main class="main-col">
+        <div class="top-stories">
+          <div style="font-weight:800;color:var(--accent);margin-right:12px">Stories</div>
+          <div class="stories-row" id="storiesRow">
+            <!-- story items populated by JS; clicking plays temporary video -->
+          </div>
+        </div>
+
+        <div class="content-area">
+          <video id="profilePlayer" class="profile-player" autoplay muted loop playsinline></video>
           <canvas id="glCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:0"></canvas>
           <canvas id="overlayCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:1"></canvas>
 
-          <div id="filterTray" class="filter-tray">
-            <div class="filter-bubble" data-filter="none">Normal</div>
-            <div class="filter-bubble" data-filter="beauty">Beauty</div>
-            <div class="filter-bubble" data-filter="funny">Funny</div>
-            <div class="filter-bubble" data-filter="cyber">Cyber</div>
+          <div class="profile-overlay" id="profileOverlay">
+            <div class="name" id="profileName">Guest</div>
+            <div class="meta" style="margin-top:6px">Age <span id="profileAge">—</span> <span class="match-pill" id="profileMatch">—%</span></div>
           </div>
+        </div>
+      </main>
 
-          <div id="captureBtn" class="capture-btn" title="Capture">●</div>
-          <div id="postStoryBtn" style="position:absolute;right:20px;bottom:36px;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">Post to Story</div>
-        </section>
-
-        <!-- Right: Deck -->
-        <section id="deckPanel" class="panel deck-wrap">
-          <div class="card-stack" id="cardStack"></div>
-        </section>
-      </div>
-
-      <!-- Match modal -->
-      <div id="matchModal" class="modal"><div class="inner text-center"><h2 class="text-3xl font-bold">It's a VibeMatch!</h2><p class="mt-3">You and <span id="matchName"></span> liked each other.</p><div class="mt-6 flex gap-4 justify-center"><button id="msgBtn" class="px-6 py-3 rounded-lg bg-[#A3E635] text-black font-bold">Message</button><button id="closeModal" class="px-6 py-3 rounded-lg border border-gray-700">Close</button></div></div></div>
+      <aside class="right-col">
+        <div style="font-weight:800;color:var(--accent);margin-bottom:8px">Nearby</div>
+        <div id="nearbyList">Loading…</div>
+      </aside>
     </div>
 
-    <!-- Login overlay -->
+    <!-- Login overlay with Phone+Password and Google OAuth -->
     <div id="loginOverlay" class="login-overlay" style="display:none">
       <div class="auth-card">
         <h3 class="text-lg font-bold mb-2">Sign In</h3>
-        <input id="emailInput" placeholder="Email" class="w-72 p-2 mb-2 rounded" />
-        <input id="passwordInput" placeholder="Password" type="password" class="w-72 p-2 mb-2 rounded" />
-        <div class="flex gap-2"><button id="loginBtn" class="px-3 py-2 bg-[#A3E635] rounded">Sign In</button><button id="signupBtn" class="px-3 py-2 border rounded">Sign Up</button></div>
+        <div id="phoneLogin">
+          <input id="phoneInput" placeholder="+1 555 555 5555" class="w-full p-2 mb-2 rounded" />
+          <input id="passwordInput" placeholder="Password" type="password" class="w-full p-2 mb-2 rounded" />
+          <div class="auth-row"><button id="loginBtn" class="px-3 py-2 bg-[#A3E635] rounded">Sign In</button><button id="signupBtn" class="px-3 py-2 border rounded">Sign Up</button></div>
+        </div>
+
+        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)" />
+
+        <div style="text-align:center">
+          <div style="font-size:13px;color:#cfeeb2;margin-bottom:8px">Or continue with</div>
+          <button id="googleBtn" class="px-4 py-2 rounded" style="background:#fff;color:#111;font-weight:700">Sign in with Google</button>
+        </div>
       </div>
     </div>
 
