@@ -127,4 +127,73 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await Promise.all([loadStories(), loadProfiles(), loadNearby()]);
+
+  // Reels viewer wiring
+  const reelsBtn = document.getElementById('reelsBtn');
+  const reelsViewer = document.getElementById('reelsViewer');
+  const closeReels = document.getElementById('closeReels');
+  const reelsContainer = document.getElementById('reelsContainer');
+  const uploadReelBtn = document.getElementById('uploadReelBtn');
+  const reelFile = document.getElementById('reelFile');
+
+  async function fetchReels(){
+    try{
+      const res = await fetch('/api/reels');
+      const rows = res.ok?await res.json():[];
+      if(!rows || rows.length===0){
+        // fallback sample
+        return [{id:'mock1', file_path:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', caption:'Sample Reel', created_at:Date.now(), user:{name:'Ava'}, user_id:null}];
+      }
+      return rows;
+    }catch(e){ return [{id:'mock1', file_path:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', caption:'Sample Reel', created_at:Date.now(), user:{name:'Ava'}, user_id:null}]; }
+  }
+
+  function makeReelNode(r){
+    const wrap = document.createElement('div'); wrap.style.height='100vh'; wrap.style.scrollSnapAlign='start'; wrap.style.position='relative'; wrap.style.display='grid'; wrap.style.placeItems='center';
+    const v = document.createElement('video'); v.src = r.file_path || r.url || r.filePath; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.className='w-full h-full object-cover';
+    wrap.appendChild(v);
+    // overlay creator badge
+    const badge = document.createElement('div'); badge.style.position='absolute'; badge.style.left='18px'; badge.style.top='18px'; badge.style.display='flex'; badge.style.alignItems='center';
+    const avatar = document.createElement('div'); avatar.style.width='42px'; avatar.style.height='42px'; avatar.style.borderRadius='999px'; avatar.style.background='#071015'; avatar.style.display='grid'; avatar.style.placeItems='center'; avatar.style.marginRight='8px'; avatar.style.border='2px solid rgba(163,230,53,0.12)';
+    const initials = document.createElement('div'); initials.style.color='#E6FCD9'; initials.style.fontWeight='800'; initials.style.fontFamily='Poppins,Inter,sans-serif'; initials.textContent = (r.user && r.user.name)?r.user.name[0].toUpperCase() : 'V';
+    avatar.appendChild(initials);
+    const matchPill = document.createElement('div'); matchPill.style.background='#A3E635'; matchPill.style.color='#07120a'; matchPill.style.fontWeight='800'; matchPill.style.padding='6px 8px'; matchPill.style.borderRadius='999px'; matchPill.textContent = (r.match||'—') + '%';
+    badge.appendChild(avatar); badge.appendChild(matchPill);
+    wrap.appendChild(badge);
+
+    // double-tap to like (simple doubleclick)
+    let lastTap = 0;
+    wrap.addEventListener('click', (e)=>{
+      const now = Date.now();
+      if (now - lastTap < 300){
+        // like animation
+        const heart = document.createElement('div'); heart.textContent='❤'; heart.style.position='absolute'; heart.style.fontSize='48px'; heart.style.left=(e.clientX-24)+'px'; heart.style.top=(e.clientY-24)+'px'; heart.style.transform='scale(0.6)'; heart.style.opacity='0.95'; heart.style.transition='transform 300ms ease, opacity 600ms ease'; document.body.appendChild(heart);
+        setTimeout(()=>{ heart.style.transform='scale(1.4)'; heart.style.opacity='0'; }, 10); setTimeout(()=>heart.remove(),700);
+      }
+      lastTap = now;
+    });
+
+    // ensure play on view
+    const io = new IntersectionObserver((entries)=>{ entries.forEach(en=>{ if(en.isIntersecting){ v.play().catch(()=>{}); } else { v.pause(); } }); }, { threshold: 0.6 });
+    io.observe(wrap);
+
+    return wrap;
+  }
+
+  reelsBtn && reelsBtn.addEventListener('click', async ()=>{
+    reelsViewer.style.display='block';
+    reelsContainer.innerHTML = '';
+    const rows = await fetchReels();
+    rows.forEach(r=> reelsContainer.appendChild(makeReelNode(r)));
+    reelsContainer.scrollTop = 0;
+  });
+  closeReels && closeReels.addEventListener('click', ()=>{ reelsViewer.style.display='none'; reelsContainer.innerHTML=''; });
+
+  uploadReelBtn && uploadReelBtn.addEventListener('click', ()=> reelFile.click());
+  reelFile && reelFile.addEventListener('change', async (ev)=>{
+    const f = ev.target.files[0]; if(!f) return; const fd = new FormData(); fd.append('video', f); fd.append('caption','Uploaded from client');
+    const token = localStorage.getItem('vibematch_token');
+    const res = await fetch('/api/reels', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
+    if(res.ok){ alert('Uploaded Reel'); const newReels = await fetchReels(); reelsContainer.innerHTML=''; newReels.forEach(r=> reelsContainer.appendChild(makeReelNode(r))); } else { const j = await res.json(); alert('Upload failed: '+(j.error||res.statusText)); }
+  });
 });

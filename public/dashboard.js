@@ -122,6 +122,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     profiles.forEach((p) => feedGrid.appendChild(createProfileCard(p)));
   }
 
+  // Create Post modal wiring
+  const createPostBtn = document.getElementById('createPostBtn');
+  const createPostModal = document.getElementById('createPostModal');
+  const postImageInput = document.getElementById('postImageInput');
+  const postCaption = document.getElementById('postCaption');
+  const cancelPost = document.getElementById('cancelPost');
+  const submitPost = document.getElementById('submitPost');
+
+  createPostBtn && createPostBtn.addEventListener('click', ()=>{ createPostModal.style.display='flex'; });
+  cancelPost && cancelPost.addEventListener('click', ()=>{ createPostModal.style.display='none'; });
+
+  submitPost && submitPost.addEventListener('click', async ()=>{
+    const f = postImageInput.files[0]; if(!f){ alert('Please select an image'); return; }
+    const fd = new FormData(); fd.append('image', f); fd.append('caption', postCaption.value||'');
+    const token = localStorage.getItem('vibematch_token');
+    const res = await fetch('/api/posts', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
+    if(res.ok){ alert('Posted'); createPostModal.style.display='none'; postCaption.value=''; postImageInput.value=''; const newPosts = await fetch('/api/posts').then(r=>r.ok?r.json():[]); if(feedGrid){ feedGrid.insertBefore(createProfileCard({ name:'You', age:'', match:'—', photo:newPosts[0]?.image_path || '', bio: newPosts[0]?.caption || '' }), feedGrid.firstChild); } } else { const j = await res.json().catch(()=>({})); alert('Post failed: '+(j.error||res.statusText)); }
+  });
+
   // set center profile player to first profile's video (fallback to mock)
   if(profiles && profiles.length>0 && profilePlayer){
     const p = profiles[0];

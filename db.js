@@ -35,6 +35,22 @@ async function ensureTables() {
         created_at BIGINT
       );
 
+      CREATE TABLE IF NOT EXISTS reels (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id),
+        file_path TEXT,
+        caption TEXT,
+        created_at BIGINT
+      );
+
+      CREATE TABLE IF NOT EXISTS posts (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id),
+        image_path TEXT,
+        caption TEXT,
+        created_at BIGINT
+      );
+
       CREATE TABLE IF NOT EXISTS likes (
         id UUID PRIMARY KEY,
         from_user UUID REFERENCES users(id),
@@ -78,6 +94,30 @@ async function addStory(story){
   await pool.query(q, [story.id, story.user_id, story.file_path, story.caption, story.created_at]);
 }
 
+async function addReel(reel){
+  if (!pool) throw new Error('DB not configured');
+  const q = 'INSERT INTO reels(id,user_id,file_path,caption,created_at) VALUES($1,$2,$3,$4,$5)';
+  await pool.query(q, [reel.id, reel.user_id, reel.file_path, reel.caption, reel.created_at]);
+}
+
+async function getReels(){
+  if (!pool) throw new Error('DB not configured');
+  const r = await pool.query('SELECT id,user_id,file_path,caption,created_at FROM reels ORDER BY created_at DESC');
+  return r.rows;
+}
+
+async function addPost(post){
+  if (!pool) throw new Error('DB not configured');
+  const q = 'INSERT INTO posts(id,user_id,image_path,caption,created_at) VALUES($1,$2,$3,$4,$5)';
+  await pool.query(q, [post.id, post.user_id, post.image_path, post.caption, post.created_at]);
+}
+
+async function getPosts(){
+  if (!pool) throw new Error('DB not configured');
+  const r = await pool.query('SELECT id,user_id,image_path,caption,created_at FROM posts ORDER BY created_at DESC');
+  return r.rows;
+}
+
 async function getRecentStories(){
   if (!pool) throw new Error('DB not configured');
   const cutoff = Date.now() - 24*60*60*1000;
@@ -108,4 +148,4 @@ async function purgeOldLikes(){
   await pool.query('DELETE FROM likes WHERE created_at <= $1', [cutoff]);
 }
 
-module.exports = { init, addUser, findUserByEmail, findUserById, addStory, getRecentStories, purgeOldStories, addLike, hasLike, purgeOldLikes };
+module.exports = { init, addUser, findUserByEmail, findUserById, addStory, getRecentStories, purgeOldStories, addLike, hasLike, purgeOldLikes, addReel, getReels, addPost, getPosts };

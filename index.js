@@ -15,6 +15,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./db');
+const multer = require('multer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
@@ -26,6 +27,30 @@ const storiesDir = path.join(__dirname, 'public', 'stories');
 if (!fs.existsSync(storiesDir)) fs.mkdirSync(storiesDir, { recursive: true });
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// ensure uploads directories
+const reelsDir = path.join(__dirname, 'public', 'uploads', 'reels');
+const postsDir = path.join(__dirname, 'public', 'uploads', 'posts');
+if (!fs.existsSync(reelsDir)) fs.mkdirSync(reelsDir, { recursive: true });
+if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
+
+const REELS_FILE = path.join(dataDir, 'reels.json');
+const POSTS_FILE = path.join(dataDir, 'posts.json');
+
+// multer setup
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    if (file.fieldname === 'video') cb(null, reelsDir);
+    else if (file.fieldname === 'image') cb(null, postsDir);
+    else cb(null, reelsDir);
+  },
+  filename: function (req, file, cb) {
+    const id = require('crypto').randomUUID();
+    const ext = path.extname(file.originalname) || (file.mimetype === 'video/mp4' ? '.mp4' : '.jpg');
+    cb(null, id + ext);
+  }
+});
+const upload = multer({ storage: storage });
 
 // simple JSON-backed stores for stories and likes (fallback)
 const STORIES_FILE = path.join(dataDir, 'stories.json');
@@ -64,6 +89,11 @@ async function findUserByPhone(phone){
   if (process.env.DATABASE_URL) return await db.findUserByPhone(phone);
   const arr = loadJsonSafe(USERS_FILE); return arr.find(u=>u.phone===phone);
 }
+
+async function addReelRecord(rec){ if (process.env.DATABASE_URL) return await db.addReel(rec); const arr = loadJsonSafe(REELS_FILE); arr.push(rec); saveJsonSafe(REELS_FILE, arr); }
+async function getReels(){ if (process.env.DATABASE_URL) return await db.getReels(); const arr = loadJsonSafe(REELS_FILE); return arr.sort((a,b)=>b.created_at-a.created_at); }
+async function addPostRecord(rec){ if (process.env.DATABASE_URL) return await db.addPost(rec); const arr = loadJsonSafe(POSTS_FILE); arr.push(rec); saveJsonSafe(POSTS_FILE, arr); }
+async function getPosts(){ if (process.env.DATABASE_URL) return await db.getPosts(); const arr = loadJsonSafe(POSTS_FILE); return arr.sort((a,b)=>b.created_at-a.created_at); }
 
 app.get('/', (_req, res) => {
   res.type('text').send('Server is running');
@@ -446,6 +476,58 @@ app.post('/api/stories', async (req, res) => {
     console.error('story upload error', err);
     return res.status(500).json({ error: 'server error' });
   }
+});
+
+// Reels endpoints: upload and list
+app.post('/api/reels', upload.single('video'), async (req, res) => {
+  try {
+    const payload = authFromHeader(req);
+    if (!payload || !payload.sub) return res.status(401).json({ error: 'unauthenticated' });
+    const userId = payload.sub;
+    if (!req.file) return res.status(400).json({ error: 'no file uploaded' });
+    const id = require('crypto').randomUUID();
+    const filename = req.file.filename;
+    const filepath = path.join('uploads', 'reels', filename);
+    const created = Date.now();
+    await addReelRecord({ id, user_id: userId, file_path: `/${filepath}`, caption: req.body.caption||null, created_at: created });
+    return res.json({ id, url: `/${filepath}`, created_at: created });
+  } catch (err) {
+    console.error('reel upload error', err);
+    return res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.get('/api/reels', async (_req, res) => {
+  try{
+    const rows = await getReels();
+    res.json(rows);
+  }catch(e){ res.status(500).json([]); }
+});
+
+// Posts endpoints: image + caption
+app.post('/api/posts', upload.single('image'), async (req, res) => {
+  try {
+    const payload = authFromHeader(req);
+    if (!payload || !payload.sub) return res.status(401).json({ error: 'unauthenticated' });
+    const userId = payload.sub;
+    if (!req.file) return res.status(400).json({ error: 'no file uploaded' });
+    const id = require('crypto').randomUUID();
+    const filename = req.file.filename;
+    const filepath = path.join('uploads', 'posts', filename);
+    const created = Date.now();
+    await addPostRecord({ id, user_id: userId, image_path: `/${filepath}`, caption: req.body.caption||null, created_at: created });
+    return res.json({ id, url: `/${filepath}`, created_at: created });
+  } catch (err) {
+    console.error('post upload error', err);
+    return res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.get('/api/posts', async (_req, res) => {
+  try{
+    const rows = await getPosts();
+    res.json(rows);
+  }catch(e){ res.status(500).json([]); }
 });
 
 // Google OAuth routes

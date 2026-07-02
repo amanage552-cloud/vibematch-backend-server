@@ -49,6 +49,10 @@
         <div class="flex items-center gap-4 p-4 border-b border-gray-800">
           <h3 class="text-sm font-bold text-[#A3E635]">Stories</h3>
           <div id="storiesRow" class="flex gap-3 overflow-x-auto py-2"></div>
+          <div style="flex:1"></div>
+          <div>
+            <button id="createPostBtn" class="px-3 py-2 rounded bg-[#A3E635] text-black font-bold">Create Post</button>
+          </div>
         </div>
 
         <div class="flex-1 flex items-center justify-center bg-black">
@@ -69,6 +73,19 @@
         <h4 class="text-sm font-bold text-[#A3E635]">Nearby</h4>
         <div id="nearbyList" class="mt-4 space-y-3">Loading…</div>
       </aside>
+    </div>
+
+    <!-- Create Post Modal -->
+    <div id="createPostModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:80;align-items:center;justify-content:center;">
+      <div style="background:linear-gradient(180deg,#071018,#000);padding:18px;border-radius:12px;min-width:360px;border:1px solid rgba(255,255,255,0.04)">
+        <h3 style="font-weight:800;color:#E6FCD9;margin-bottom:8px">Create Post</h3>
+        <input id="postImageInput" type="file" accept="image/*" style="display:block;margin-bottom:8px" />
+        <textarea id="postCaption" placeholder="Write a caption..." style="width:100%;min-height:80px;padding:8px;border-radius:8px;background:#071018;border:1px solid rgba(255,255,255,0.03);color:#E6EEF3"></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button id="cancelPost" class="px-3 py-2 rounded border">Cancel</button>
+          <button id="submitPost" class="px-3 py-2 rounded bg-[#A3E635] text-black font-bold">Post</button>
+        </div>
+      </div>
     </div>
 
     <!-- Mobile Bottom Nav -->

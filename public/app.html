@@ -51,12 +51,25 @@
           <div class="brand text-lg">VibeMatch</div>
         </div>
 
-        <div class="nav-icon">🏠</div>
+        <div class="nav-icon" id="homeBtn">🏠</div>
+        <div class="nav-icon" id="reelsBtn">🎞️</div>
         <div class="nav-icon">★</div>
         <div class="nav-icon">⚙</div>
         <div style="flex:1"></div>
         <div id="hamburger" class="nav-icon">☰</div>
       </nav>
+
+      <!-- Reels viewer overlay -->
+      <div id="reelsViewer" style="display:none;position:fixed;inset:0;background:#000;z-index:80;">
+        <div style="position:absolute;top:14px;left:14px;z-index:90"><button id="closeReels" class="px-3 py-2 rounded bg-black/60 text-[#A3E635]">Close</button></div>
+        <div id="reelsUploader" style="position:absolute;top:14px;right:14px;z-index:90">
+          <input id="reelFile" type="file" accept="video/mp4,video/webm" style="display:none" />
+          <button id="uploadReelBtn" class="px-3 py-2 rounded bg-[#A3E635] text-black">Upload Reel</button>
+        </div>
+        <div id="reelsContainer" style="height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;display:flex;flex-direction:column;">
+          <!-- vertical reels appended here -->
+        </div>
+      </div>
 
       <main class="main-col">
         <div class="top-stories">
