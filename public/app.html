@@ -126,6 +126,18 @@
       </div>
     </div>
 
+    <!-- Geolocation consent modal -->
+    <div id="geoConsentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+      <div style="background:linear-gradient(180deg,#071018,#000);padding:18px;border-radius:12px;min-width:320px;border:1px solid rgba(255,255,255,0.04)">
+        <h3 style="font-weight:800;color:#E6FCD9;margin-bottom:8px">Enable Location</h3>
+        <p style="color:#9AB39A;font-size:13px">VibeMatch uses your location to show nearby people and matches. Your precise location will only be shared with nearby users and used to improve matches. You can revoke this anytime in your browser settings.</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="geoDeclineBtn" class="px-3 py-2 rounded border">Decline</button>
+          <button id="geoAcceptBtn" class="px-3 py-2 rounded bg-[#A3E635] text-black font-bold">Allow Location</button>
+        </div>
+      </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2Y6b7gG1k9H4g9vS7Z5Y2bM6Q1p3bZfXg9m0h+8=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -67,6 +67,15 @@ async function ensureTables() {
         to_user UUID REFERENCES users(id),
         created_at BIGINT
       );
+
+      CREATE TABLE IF NOT EXISTS locations (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id),
+        lat DOUBLE PRECISION,
+        lng DOUBLE PRECISION,
+        accuracy DOUBLE PRECISION,
+        last_seen BIGINT
+      );
     `);
   } finally {
     client.release();
@@ -168,6 +177,24 @@ async function purgeOldLikes(){
   if (!pool) throw new Error('DB not configured');
   const cutoff = Date.now() - 24*60*60*1000;
   await pool.query('DELETE FROM likes WHERE created_at <= $1', [cutoff]);
+}
+
+async function upsertLocation(loc){
+  if (!pool) throw new Error('DB not configured');
+  // try update; if not exists, insert
+  const q = `
+    INSERT INTO locations(id,user_id,lat,lng,accuracy,last_seen)
+    VALUES($1,$2,$3,$4,$5,$6)
+    ON CONFLICT (id) DO UPDATE SET lat = EXCLUDED.lat, lng = EXCLUDED.lng, accuracy = EXCLUDED.accuracy, last_seen = EXCLUDED.last_seen;
+  `;
+  await pool.query(q, [loc.id, loc.user_id || null, loc.lat, loc.lng, loc.accuracy || null, loc.last_seen]);
+}
+
+async function getOnlineLocations(sinceMs){
+  if (!pool) throw new Error('DB not configured');
+  const since = Date.now() - (sinceMs || 1000*60*60);
+  const r = await pool.query('SELECT id,user_id,lat,lng,accuracy,last_seen FROM locations WHERE last_seen >= $1', [since]);
+  return r.rows;
 }
 
 module.exports = { init, addUser, findUserByEmail, findUserById, addStory, getRecentStories, purgeOldStories, addLike, hasLike, purgeOldLikes, addReel, getReels, addPost, getPosts, addEngagement, getEngagementsForTarget };

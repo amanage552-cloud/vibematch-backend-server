@@ -260,13 +260,23 @@ app.get('/api/profiles', async (_req, res) => {
   }
 });
 
-app.get('/api/online', (_req, res) => {
-  const online = [
-    { id: 'mia', name: 'Mia', avatar: '/images/ava1.jpg' },
-    { id: 'noah', name: 'Noah', avatar: '/images/ava2.jpg' },
-    { id: 'siena', name: 'Siena', avatar: '/images/ava3.jpg' }
-  ];
-  res.json(online);
+// Online locations: return recent locations from DB or in-memory store
+const liveLocations = new Map();
+
+app.get('/api/online', async (_req, res) => {
+  try {
+    if (process.env.DATABASE_URL) {
+      const rows = await db.getOnlineLocations(1000*60*60); // last hour
+      return res.json(rows.map(r=>({ id: r.id, user_id: r.user_id, lat: r.lat, lng: r.lng, last_seen: r.last_seen })));
+    }
+    // fallback to in-memory map
+    const out = [];
+    for (const [k, v] of liveLocations.entries()) out.push(v);
+    return res.json(out);
+  } catch (e) {
+    console.warn('api/online error', e.message);
+    return res.json([]);
+  }
 });
 
 // Auth endpoints
@@ -303,6 +313,45 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
+});
+
+// Socket.IO: accept location updates from clients, persist to DB, and broadcast to others
+io.on('connection', (socket) => {
+  // try to extract JWT from handshake auth or query
+  let token = null;
+  try {
+    token = (socket.handshake && socket.handshake.auth && socket.handshake.auth.token) || (socket.handshake && socket.handshake.query && socket.handshake.query.token) || null;
+  } catch (e) { token = null; }
+  let socketUser = null;
+  if (token) {
+    try { socketUser = jwt.verify(token, JWT_SECRET); } catch (e) { socketUser = null; }
+  }
+
+  socket.on('location:update', async (payload) => {
+    try {
+      if (!payload || typeof payload.lat === 'undefined' || typeof payload.lng === 'undefined') return;
+      const lat = parseFloat(payload.lat);
+      const lng = parseFloat(payload.lng);
+      const accuracy = typeof payload.accuracy !== 'undefined' ? parseFloat(payload.accuracy) : null;
+      const id = payload.id || (socketUser && socketUser.sub) || socket.id;
+      const now = Date.now();
+      const record = { id, user_id: socketUser && socketUser.sub, lat, lng, accuracy, last_seen: now, name: (socketUser && socketUser.name) || null };
+      // update in-memory cache
+      liveLocations.set(id, record);
+      // persist to DB if available
+      if (process.env.DATABASE_URL) {
+        try { await db.upsertLocation({ id, user_id: socketUser && socketUser.sub, lat, lng, accuracy, last_seen: now }); } catch (e) { console.warn('upsertLocation failed', e.message); }
+      }
+      // broadcast to other clients
+      socket.broadcast.emit('user:location', { id, lat, lng, name: record.name, ts: now });
+    } catch (e) {
+      console.warn('location:update handler error', e && e.message);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    try { liveLocations.delete(socket.id); } catch (e) {}
+  });
 });
 
 let waitingUsers = [];

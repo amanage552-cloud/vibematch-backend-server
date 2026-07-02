@@ -179,18 +179,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.setView(pos, Math.max(map.getZoom(), 13));
   }
 
-  // Start map and geolocation
-  initMap();
-  if ('geolocation' in navigator) {
-    const watchId = navigator.geolocation.watchPosition(async (pos) => {
-      const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = pos.coords.accuracy;
-      updateOwnLocation(lat, lng);
-      // broadcast to server via socket
-      if (socket) socket.emit('location:update', { lat, lng, accuracy: acc, ts: Date.now() });
-      // also POST as a fallback
-      try { await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lng, accuracy: acc }) }); } catch (e) {}
-    }, (err) => { console.warn('geolocation error', err); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
-  } else { console.warn('Geolocation not available'); }
+  // Geolocation consent modal wiring
+  const geoConsentModal = document.getElementById('geoConsentModal');
+  const geoAcceptBtn = geoConsentModal && document.getElementById('geoAcceptBtn');
+  const geoDeclineBtn = geoConsentModal && document.getElementById('geoDeclineBtn');
+
+  function startLocationPipeline(){
+    initMap();
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        updateOwnLocation(pos.coords.latitude, pos.coords.longitude);
+      }, (err)=>{ console.warn('geolocation initial error', err); }, { enableHighAccuracy: true });
+
+      const watchId = navigator.geolocation.watchPosition(async (pos) => {
+        const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = pos.coords.accuracy;
+        updateOwnLocation(lat, lng);
+        if (socket) socket.emit('location:update', { lat, lng, accuracy: acc, ts: Date.now() });
+        try { await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lng, accuracy: acc }) }); } catch (e) {}
+      }, (err) => { console.warn('geolocation watch error', err); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    } else { console.warn('Geolocation not available'); }
+  }
+
+  const consent = localStorage.getItem('vibematch_geo_consent');
+  if (consent === '1') { startLocationPipeline(); }
+  else {
+    if (geoConsentModal) { geoConsentModal.style.display = 'flex'; }
+    if (geoAcceptBtn) geoAcceptBtn.addEventListener('click', () => { localStorage.setItem('vibematch_geo_consent','1'); if (geoConsentModal) geoConsentModal.style.display='none'; startLocationPipeline(); });
+    if (geoDeclineBtn) geoDeclineBtn.addEventListener('click', () => { localStorage.setItem('vibematch_geo_consent','0'); if (geoConsentModal) geoConsentModal.style.display='none'; });
+  }
 
   // Listen for other users' location updates over Socket.IO
   if (socket) {
