@@ -7,6 +7,11 @@ const axios = require('axios');
 
 const app = express();
 app.use(cors({ origin: '*' }));
+
+app.get('/', (_req, res) => {
+  res.type('text/plain').send('Server is running');
+});
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -221,14 +226,19 @@ io.on('connection', (socket) => {
   });
 });
 
-cron.schedule('*/5 * * * *', async () => {
-  try {
-    console.log('Sending automatic background heartbeat...');
-    await axios.get('https://vibematch-backend-server.onrender.com');
-  } catch (err) {
-    console.log('Heartbeat ping successfully sent.');
-  }
-});
+const HEARTBEAT_URL = process.env.HEARTBEAT_URL;
+
+if (HEARTBEAT_URL) {
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      console.log('Sending automatic background heartbeat...');
+      await axios.get(HEARTBEAT_URL, { timeout: 10000 });
+      console.log('Heartbeat ping sent successfully.');
+    } catch (err) {
+      console.log('Heartbeat ping failed:', err.message);
+    }
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
