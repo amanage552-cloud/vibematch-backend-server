@@ -49,7 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!dataUrl) {
           const c = document.createElement('canvas'); c.width = cameraVideo.videoWidth; c.height = cameraVideo.videoHeight; c.getContext('2d').drawImage(cameraVideo,0,0,c.width,c.height); dataUrl = c.toDataURL('image/jpeg',0.9);
         }
-        const resp = await fetch('/api/stories', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: localUserId, dataUrl, caption: '' }) });
+        const token = localStorage.getItem('vibematch_token');
+        const resp = await fetch('/api/stories', { method: 'POST', headers: {'Content-Type':'application/json', ...(token?{ Authorization: 'Bearer '+token }:{})}, body: JSON.stringify({ dataUrl, caption: '' }) });
         const j = await resp.json();
         if (resp.ok) { alert('Posted to Story'); } else { alert('Story upload failed: '+(j.error||resp.status)); }
       } catch (err) { console.error('story post',err); alert('Upload failed'); }
@@ -58,11 +59,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Socket.IO live integration
   const socket = (window.io && io()) || null;
-  // create or reuse a local user id
-  let localUserId = localStorage.getItem('vibematch_user');
-  if (!localUserId) { localUserId = 'user_' + Math.random().toString(36).slice(2,9); localStorage.setItem('vibematch_user', localUserId); }
-  if (socket) { socket.emit('identify', { userId: localUserId }); socket.on('matched', (data) => { const otherId = data?.with; if(!otherId) return; // try to map to name
-      const cardProfile = profilesById[otherId]; matchName.textContent = cardProfile ? cardProfile.name : otherId; matchModal.style.display='flex'; }); }
+  // auth UI
+  let localUser = null; // {id,email,name}
+  const loginOverlay = document.getElementById('loginOverlay');
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+
+  function showLogin(){ if(loginOverlay) loginOverlay.style.display='flex'; }
+  function hideLogin(){ if(loginOverlay) loginOverlay.style.display='none'; }
+
+  async function apiPost(path, body){ const token = localStorage.getItem('vibematch_token'); const res = await fetch(path,{method:'POST',headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}: {})}, body: JSON.stringify(body)}); return res; }
+
+  loginBtn && loginBtn.addEventListener('click', async ()=>{
+    try{ const res = await apiPost('/api/login',{ email: emailInput.value, password: passwordInput.value }); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); localUser=j.user; hideLogin(); if(socket) socket.emit('identify',{ token: j.token }); } else { alert(j.error||'login failed'); } }catch(e){console.error(e);alert('login error'); }
+  });
+
+  signupBtn && signupBtn.addEventListener('click', async ()=>{
+    try{ const res = await apiPost('/api/signup',{ email: emailInput.value, password: passwordInput.value, name: emailInput.value.split('@')[0]}); const j = await res.json(); if(res.ok){ localStorage.setItem('vibematch_token', j.token); localUser=j.user; hideLogin(); if(socket) socket.emit('identify',{ token: j.token }); } else { alert(j.error||'signup failed'); } }catch(e){console.error(e);alert('signup error'); }
+  });
+
+  // require login
+  if (!localStorage.getItem('vibematch_token')) showLogin(); else { const token = localStorage.getItem('vibematch_token'); if (socket) socket.emit('identify',{ token }); }
+
+  if (socket) { socket.on('matched', (data) => { const otherId = data?.with; if(!otherId) return; const cardProfile = profilesById[otherId]; matchName.textContent = cardProfile ? cardProfile.name : otherId; matchModal.style.display='flex'; }); }
 
   // filter selection
   filterTray.querySelectorAll('.filter-bubble').forEach(b=>{
@@ -113,11 +134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function onLike(profile){
-    // emit like to server via Socket.IO for live matching
     try{
-      if (socket) socket.emit('deck_like', { fromUserId: localUserId, targetUserId: profile.id });
+      if (!localUser){ alert('Sign in first'); showLogin(); return; }
+      if (socket) socket.emit('deck_like', { targetUserId: profile.id });
     }catch(e){console.warn('like emit failed',e)}
-    // local fallback: show modal for high-match scores
     if(profile.match>=90){ matchName.textContent=profile.name; matchModal.style.display='flex'; }
   }
 

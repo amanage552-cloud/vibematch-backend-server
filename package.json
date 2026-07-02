@@ -20,6 +20,8 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "node-cron": "^4.5.0",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
     "socket.io": "^4.8.3"
   }
 }

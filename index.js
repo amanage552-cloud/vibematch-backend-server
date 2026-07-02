@@ -12,6 +12,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '30mb' }));
 
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
 // ensure directories
 const storiesDir = path.join(__dirname, 'public', 'stories');
@@ -22,6 +26,11 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 // simple JSON-backed stores for stories and likes
 const STORIES_FILE = path.join(dataDir, 'stories.json');
 const LIKES_FILE = path.join(dataDir, 'likes.json');
+const USERS_FILE = path.join(dataDir, 'users.json');
+
+function findUserByEmail(email){ const arr = loadJsonSafe(USERS_FILE); return arr.find(u=>u.email===email); }
+function findUserById(id){ const arr = loadJsonSafe(USERS_FILE); return arr.find(u=>u.id===id); }
+function addUser(rec){ const arr = loadJsonSafe(USERS_FILE); arr.push(rec); saveJsonSafe(USERS_FILE, arr); }
 
 function loadJsonSafe(filePath){
   try { if (!fs.existsSync(filePath)) return []; const raw = fs.readFileSync(filePath,'utf8'); return JSON.parse(raw || '[]'); } catch (e) { return []; }
@@ -92,6 +101,31 @@ app.get('/api/online', (_req, res) => {
   ];
   res.json(online);
 });
+
+// Auth endpoints
+app.post('/api/signup', (req, res) => {
+  const { email, name, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  if (findUserByEmail(email)) return res.status(400).json({ error: 'user exists' });
+  const id = require('crypto').randomUUID();
+  const hashed = bcrypt.hashSync(password, 8);
+  const user = { id, email, name: name||email.split('@')[0], password: hashed, created_at: Date.now() };
+  addUser(user);
+  const token = jwt.sign({ sub: id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+});
+
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  const user = findUserByEmail(email);
+  if (!user) return res.status(401).json({ error: 'invalid' });
+  if (!bcrypt.compareSync(password, user.password)) return res.status(401).json({ error: 'invalid' });
+  const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+});
+
+function authFromHeader(req){ const auth = req.headers.authorization || ''; if (!auth) return null; const m = auth.match(/^Bearer (.+)$/); if(!m) return null; try{ const payload = jwt.verify(m[1], JWT_SECRET); return payload; }catch(e){ return null; } }
 
 const server = http.createServer(app);
 
@@ -209,11 +243,13 @@ io.on('connection', (socket) => {
 
   // identify this socket as a particular user id (e.g., from local profile)
   socket.on('identify', (data) => {
-    const userId = data?.userId;
-    if (!userId) return;
-    socket.userId = userId;
-    // store on socket object; we can also maintain a global map if needed
-    console.log('Socket identified as user:', userId);
+    const token = data?.token;
+    if (!token) { console.log('identify: no token'); return; }
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      socket.userId = payload.sub;
+      console.log('Socket identified as user:', socket.userId);
+    } catch (err) { console.log('identify token invalid'); }
   });
 
   // simple deck-like matchmaking: store likes and detect mutual likes between connected users
@@ -222,7 +258,8 @@ io.on('connection', (socket) => {
 
   socket.on('deck_like', (data) => {
     try {
-      const { fromUserId, targetUserId } = data || {};
+      const { targetUserId } = data || {};
+      const fromUserId = socket.userId;
       if (!fromUserId || !targetUserId) return;
       const now = Date.now();
       const likeId = require('crypto').randomUUID();
@@ -361,7 +398,10 @@ io.on('connection', (socket) => {
 // Story upload endpoint
 app.post('/api/stories', async (req, res) => {
   try {
-    const { userId, dataUrl, caption } = req.body || {};
+    const { dataUrl, caption } = req.body || {};
+    const payload = authFromHeader(req);
+    if (!payload || !payload.sub) return res.status(401).json({ error: 'unauthenticated' });
+    const userId = payload.sub;
     if (!dataUrl || !userId) return res.status(400).json({ error: 'missing data' });
 
     const matches = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);

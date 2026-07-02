@@ -73,8 +73,22 @@ const Filters = (function(){
     gl = canvas.getContext('webgl');
     if(!gl) { console.warn('WebGL not available'); return; }
     const vs = `attribute vec2 a_position; varying vec2 v_uv; void main(){ v_uv=(a_position+1.0)*0.5; gl_Position = vec4(a_position,0,1); }`;
-    const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; uniform int u_mode; uniform float u_time; void main(){ vec2 uv=v_uv; vec4 c=texture2D(u_tex,uv); if(u_mode==1){ c.rgb = c.rgb * 1.08; } else if(u_mode==2){ float angle = 0.4 * sin(uv.y*30.0 + u_time*0.01); uv.x += angle*0.01; c = texture2D(u_tex, uv); c = vec4(vec3((c.r+c.g+c.b)/3.0),1.0); } else if(u_mode==3){ // danger
-      float v = sin(uv.y*800.0)*0.02; vec3 tint = vec3(1.2,0.2,0.2); c.rgb = mix(c.rgb, c.rgb * tint, 0.35 + v); }
+    const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; uniform int u_mode; uniform float u_time; void main(){ vec2 uv=v_uv; vec2 texSize = vec2(640.0,480.0); vec2 px = 1.0/texSize; vec4 c = texture2D(u_tex, uv);
+      if(u_mode==1){ // beauty: simple 5-tap gaussian-ish blur
+        vec4 sum = vec4(0.0);
+        sum += texture2D(u_tex, uv) * 0.4;
+        sum += texture2D(u_tex, uv + vec2(px.x,0.0)) * 0.15;
+        sum += texture2D(u_tex, uv - vec2(px.x,0.0)) * 0.15;
+        sum += texture2D(u_tex, uv + vec2(0.0,px.y)) * 0.15;
+        sum += texture2D(u_tex, uv - vec2(0.0,px.y)) * 0.15;
+        c = sum;
+        // gentle contrast and color boost
+        c.rgb = clamp((c.rgb * 1.03 + 0.01), 0.0, 1.0);
+      } else if(u_mode==2){ // funny: desaturate + wave
+        float angle = 0.4 * sin(uv.y*30.0 + u_time*0.01); uv.x += angle*0.01; c = texture2D(u_tex, uv); float gray = dot(c.rgb, vec3(0.3,0.59,0.11)); c.rgb = mix(c.rgb, vec3(gray), 0.7);
+      } else if(u_mode==3){ // danger: red tint with scanline
+        float v = sin((uv.y + u_time*0.0005)*800.0)*0.02; vec3 tint = vec3(1.2,0.2,0.2); c.rgb = mix(c.rgb, c.rgb * tint, 0.35 + v);
+      }
       gl_FragColor = c; }`;
 
     const vshader = compileShader(gl, vs, gl.VERTEX_SHADER);
@@ -131,28 +145,6 @@ const Filters = (function(){
     requestAnimationFrame(renderLoop);
   }
 
-    if (typeof window.FaceMesh === 'undefined' && typeof window.FaceMesh === 'undefined') {
-      // MediaPipe scripts maybe not loaded; check for global FaceMesh constructor
-    }
-
-    try{
-      if (window.FaceMesh && window.Camera && window.drawUtils){
-        faceMesh = new window.FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
-        faceMesh.setOptions({maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.5, minTrackingConfidence:0.5});
-        faceMesh.onResults(onResults);
-
-        camera = new window.Camera(videoEl, {
-          onFrame: async () => await faceMesh.send({image: videoEl}),
-          width: 640,
-          height: 480
-        });
-        camera.start();
-        console.info('MediaPipe FaceMesh started');
-      } else {
-        console.warn('MediaPipe FaceMesh not available; falling back to CSS filters');
-      }
-    }catch(err){console.warn('FaceMesh init error',err);}
-  }
 
   function applyFilter(videoElement, m){
     mode = m || 'none';
