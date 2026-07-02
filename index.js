@@ -279,6 +279,46 @@ app.get('/api/online', async (_req, res) => {
   }
 });
 
+// HTTP fallback for location updates (clients that can't use WebSockets)
+app.post('/api/location', async (req, res) => {
+  try {
+    const body = req.body || {};
+    // allow token via Authorization header or body.token
+    const payload = authFromHeader(req) || (body.token ? (function(){ try { return jwt.verify(body.token, JWT_SECRET); } catch(e){ return null; } })() : null);
+    const userId = payload ? (payload.sub || payload.user_id || null) : null;
+
+    if (typeof body.lat === 'undefined' || typeof body.lng === 'undefined') return res.status(400).json({ error: 'lat and lng required' });
+    const lat = parseFloat(body.lat);
+    const lng = parseFloat(body.lng);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return res.status(400).json({ error: 'invalid lat/lng' });
+
+    const accuracy = (typeof body.accuracy !== 'undefined') ? parseFloat(body.accuracy) : null;
+    const id = body.id || userId || require('crypto').randomUUID();
+    const now = Date.now();
+    const record = { id, user_id: userId, lat, lng, accuracy, last_seen: now, name: (payload && payload.name) || null };
+
+    // update in-memory cache
+    liveLocations.set(id, record);
+
+    // persist to DB if configured
+    if (process.env.DATABASE_URL) {
+      try {
+        await db.upsertLocation({ id, user_id: userId, lat, lng, accuracy, last_seen: now });
+      } catch (e) {
+        console.warn('upsertLocation failed (http)', e.message);
+      }
+    }
+
+    // broadcast to connected clients
+    try { io.emit('user:location', { id, lat, lng, name: record.name, ts: now }); } catch (e) { /* ignore */ }
+
+    return res.json({ success: true, id, ts: now });
+  } catch (e) {
+    console.warn('POST /api/location error', e && e.message);
+    return res.status(500).json({ error: 'server error' });
+  }
+});
+
 // Auth endpoints
 // Phone + password signup/login
 app.post('/api/signup', async (req, res) => {
