@@ -34,6 +34,30 @@ const postsDir = path.join(__dirname, 'public', 'uploads', 'posts');
 if (!fs.existsSync(reelsDir)) fs.mkdirSync(reelsDir, { recursive: true });
 if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
 
+// ensure downloads directory for OTA / desktop assets
+const downloadsDir = path.join(__dirname, 'public', 'downloads');
+if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
+// Serve downloadable artifacts from /downloads/*
+app.use('/downloads', express.static(downloadsDir, { maxAge: '1d' }));
+
+// Simple request logger for structured logs (production-friendly)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const entry = {
+      ts: new Date().toISOString(),
+      method: req.method,
+      path: req.originalUrl || req.url,
+      status: res.statusCode,
+      duration_ms: duration,
+      ip: req.ip || req.connection.remoteAddress
+    };
+    console.info('req', JSON.stringify(entry));
+  });
+  next();
+});
+
 const REELS_FILE = path.join(dataDir, 'reels.json');
 const POSTS_FILE = path.join(dataDir, 'posts.json');
 const ENGAGEMENTS_FILE = path.join(dataDir, 'engagements.json');
@@ -100,6 +124,23 @@ async function getEngagementsForTarget(target_type, target_id){ if (process.env.
 
 app.get('/', (_req, res) => {
   res.type('text').send('Server is running');
+});
+
+// Health check and monitor endpoints for automated probes
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime_sec: process.uptime(), ts: Date.now() });
+});
+
+app.get('/monitor', (_req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    status: 'ok',
+    pid: process.pid,
+    uptime_sec: process.uptime(),
+    mem,
+    loadavg: (typeof os !== 'undefined' && os.loadavg) ? require('os').loadavg() : [],
+    ts: Date.now()
+  });
 });
 
 // Simple API endpoints for dashboard data
@@ -717,6 +758,61 @@ if (HEARTBEAT_URL) {
 }
 
 const PORT = process.env.PORT || 3000;
+// Optional Sentry integration if present via environment variable
+if (process.env.SENTRY_DSN) {
+  try {
+    const Sentry = require('@sentry/node');
+    Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'production' });
+    console.log('Sentry initialized');
+  } catch (e) {
+    console.warn('Sentry not installed locally; skipping Sentry init');
+  }
+}
+
+// create logs dir
+const logsDir = path.join(__dirname, 'logs'); if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
+function writeErrorTrace(name, err) {
+  try {
+    const fname = path.join(logsDir, `${name.replace(/[^a-z0-9]/gi,'_')}_${Date.now()}.log`);
+    const payload = { ts: new Date().toISOString(), pid: process.pid, err: { message: err && err.message, stack: err && err.stack } };
+    fs.writeFileSync(fname, JSON.stringify(payload, null, 2));
+    console.error('Saved error trace to', fname);
+  } catch (e) {
+    console.error('Failed to write error trace', e.message);
+  }
+}
+
+async function handleFatalError(err, origin) {
+  try {
+    console.error('Fatal error captured', origin || 'unknown', err && err.message);
+    writeErrorTrace(origin || 'fatal', err || {});
+    // graceful shutdown - stop accepting new connections
+    try { server.close(); } catch (e) { /* ignore */ }
+    try { io && io.close && io.close(); } catch (e) { /* ignore */ }
+
+    // optional self-restart behavior (use with caution). Requires SELF_RESTART=1 in env
+    if (process.env.SELF_RESTART === '1') {
+      try {
+        const { spawn } = require('child_process');
+        const out = fs.openSync(path.join(logsDir,'restart.out.log'),'a');
+        const errOut = fs.openSync(path.join(logsDir,'restart.err.log'),'a');
+        const child = spawn(process.execPath, [process.argv[1]], { detached: true, stdio: ['ignore', out, errOut] });
+        child.unref();
+        console.log('Spawned detached restart process (pid=', child.pid, ')');
+      } catch (e) {
+        console.error('Failed to spawn restart process', e && e.message);
+      }
+    }
+  } finally {
+    // exit current process to avoid inconsistent state
+    process.exit(1);
+  }
+}
+
+process.on('uncaughtException', (err) => handleFatalError(err, 'uncaughtException'));
+process.on('unhandledRejection', (reason) => handleFatalError(reason, 'unhandledRejection'));
+
 server.listen(PORT, () => {
   console.log(`✅ Server Running on port ${PORT}`);
 });
