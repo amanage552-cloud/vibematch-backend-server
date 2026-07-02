@@ -1,0 +1,17 @@
+# Render service configuration for VibeMatch web service
+service: vibematch-backend-server
+type: web
+env: node
+region: oregon
+plan: starter
+buildCommand: "npm ci --production && npm run build"
+startCommand: "npm start"
+healthCheckPath: "/health"
+autoDeploy: true
+pullRequestPreviews:
+  enabled: true
+  buildCommand: "npm ci --production && npm run build"
+
+# Ensure desktop packaging is not built on Render by using production install only
+# Desktop packaging lives in `desktop/` and must be built locally:
+# cd desktop && npm install && npm run dist
