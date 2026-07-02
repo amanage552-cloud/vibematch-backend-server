@@ -24,6 +24,15 @@
       .glow-hover:hover{box-shadow:0 6px 30px rgba(163,230,53,0.28); transform:translateY(-3px);}
       .accent-pill{background:linear-gradient(90deg,var(--accent),var(--accent-strong)); color:#07120a}
     </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2Y6b7gG1k9H4g9vS7Z5Y2bM6Q1p3bZfXg9m0h+8=" crossorigin="" />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      #map { width: 100%; height: 320px; border-radius: 10px; overflow: hidden; }
+      .pulse-marker { width: 18px; height: 18px; border-radius: 50%; background: #A3E635; box-shadow: 0 0 12px rgba(163,230,53,0.9); position: relative; }
+      .pulse-marker::after { content: ''; position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background: rgba(163,230,53,0.12); animation: pulse 1.6s infinite; }
+      @keyframes pulse { 0% { transform: translate(-50%,-50%) scale(1); opacity: 0.9 } 70% { transform: translate(-50%,-50%) scale(2.6); opacity: 0 } 100% { opacity: 0 } }
+    </style>
   </head>
   <body class="antialiased">
     <div class="min-h-screen flex">
@@ -75,7 +84,7 @@
       <!-- Right column compact -->
       <aside class="w-80 p-4 bg-[#06070a] border-l border-gray-800">
         <h4 class="text-sm font-bold text-[#A3E635]">Nearby</h4>
-        <div id="nearbyList" class="mt-4 space-y-3">Loading…</div>
+        <div id="map" class="mt-4"></div>
       </aside>
     </div>
 

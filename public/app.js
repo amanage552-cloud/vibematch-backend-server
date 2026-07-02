@@ -128,6 +128,89 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await Promise.all([loadStories(), loadProfiles(), loadNearby()]);
 
+  // --- Geolocation + Leaflet Map + Socket.IO location pipeline ---
+  const socket = (typeof io === 'function') ? io() : null;
+  const otherMarkers = new Map();
+  let userMarker = null;
+  let map = null;
+
+  function initMap() {
+    try {
+      const mapContainer = document.getElementById('map') || document.getElementById('nearbyList');
+      if (!mapContainer) return;
+      mapContainer.innerHTML = ''; // clear fallback
+      map = L.map(mapContainer, { zoomControl: true, attributionControl: true }).setView([0,0], 2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      }).addTo(map);
+    } catch (e) {
+      console.warn('Leaflet init failed', e);
+    }
+  }
+
+  function makePulseIcon() {
+    return L.divIcon({ className: '', html: '<div class="pulse-marker"></div>', iconSize: [18,18], iconAnchor: [9,9] });
+  }
+
+  function updateOtherUser(id, lat, lng, meta) {
+    if (!map) return;
+    const key = String(id);
+    const pos = [lat, lng];
+    if (otherMarkers.has(key)) {
+      const mk = otherMarkers.get(key);
+      mk.setLatLng(pos);
+    } else {
+      const mk = L.marker(pos, { icon: makePulseIcon() }).addTo(map);
+      mk.bindPopup((meta && meta.name) ? `${meta.name}` : 'User');
+      otherMarkers.set(key, mk);
+    }
+  }
+
+  function updateOwnLocation(lat, lng) {
+    if (!map) return;
+    const pos = [lat, lng];
+    if (!userMarker) {
+      userMarker = L.circleMarker(pos, { radius: 8, color: '#A3E635', fillColor: '#A3E635', fillOpacity: 1 }).addTo(map);
+      userMarker.bindPopup('You');
+    } else {
+      userMarker.setLatLng(pos);
+    }
+    map.setView(pos, Math.max(map.getZoom(), 13));
+  }
+
+  // Start map and geolocation
+  initMap();
+  if ('geolocation' in navigator) {
+    const watchId = navigator.geolocation.watchPosition(async (pos) => {
+      const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = pos.coords.accuracy;
+      updateOwnLocation(lat, lng);
+      // broadcast to server via socket
+      if (socket) socket.emit('location:update', { lat, lng, accuracy: acc, ts: Date.now() });
+      // also POST as a fallback
+      try { await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lng, accuracy: acc }) }); } catch (e) {}
+    }, (err) => { console.warn('geolocation error', err); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+  } else { console.warn('Geolocation not available'); }
+
+  // Listen for other users' location updates over Socket.IO
+  if (socket) {
+    socket.on('connect', () => { console.info('socket connected', socket.id); });
+    socket.on('user:location', (payload) => {
+      if (!payload || !payload.id) return; updateOtherUser(payload.id, payload.lat, payload.lng, { name: payload.name });
+    });
+  }
+
+  // Periodically fetch /api/online as fallback to seed markers
+  async function refreshNearbyFromApi(){
+    try{
+      const res = await fetch('/api/online'); if(!res.ok) return; const list = await res.json(); if(!Array.isArray(list)) return;
+      list.forEach((u, idx)=>{
+        if (u.lat && u.lng && u.id) updateOtherUser(u.id, u.lat, u.lng, { name: u.name });
+      });
+    }catch(e){ /* ignore */ }
+  }
+  refreshNearbyFromApi(); setInterval(refreshNearbyFromApi, 15_000);
+
   // Reels viewer wiring
   const reelsBtn = document.getElementById('reelsBtn');
   const reelsViewer = document.getElementById('reelsViewer');
