@@ -355,6 +355,37 @@ const io = new Server(server, {
   },
 });
 
+// Simple in-memory rate limiting for location endpoints (HTTP + Socket)
+const RATE_LIMITS = {
+  http: { windowMs: 60 * 1000, max: 60, maxContentLength: 16 * 1024 }, // 60 requests/min, 16KB payload
+  socket: { windowMs: 10 * 1000, max: 10 }, // 10 updates per 10s
+};
+const _rateMap = new Map();
+const _socketRateMap = new Map();
+
+function _keyForReq(req) {
+  const auth = authFromHeader(req);
+  if (auth && auth.sub) return `u:${auth.sub}`;
+  return `ip:${(req.headers['x-forwarded-for'] || req.ip || req.connection && req.connection.remoteAddress || 'anon')}`;
+}
+
+function locationRateLimitMiddleware(req, res, next) {
+  try {
+    const key = _keyForReq(req);
+    const now = Date.now();
+    const st = _rateMap.get(key) || { count: 0, first: now };
+    if (now - st.first > RATE_LIMITS.http.windowMs) { st.count = 0; st.first = now; }
+    st.count++;
+    _rateMap.set(key, st);
+    if (st.count > RATE_LIMITS.http.max) return res.status(429).json({ error: 'rate_limited' });
+    const len = parseInt(req.get('content-length') || '0', 10) || 0;
+    if (len && len > RATE_LIMITS.http.maxContentLength) return res.status(413).json({ error: 'payload_too_large' });
+    return next();
+  } catch (e) {
+    return next();
+  }
+}
+
 // Socket.IO: accept location updates from clients, persist to DB, and broadcast to others
 io.on('connection', (socket) => {
   // try to extract JWT from handshake auth or query
@@ -369,12 +400,22 @@ io.on('connection', (socket) => {
 
   socket.on('location:update', async (payload) => {
     try {
+      // socket-level rate limiting: per-socket short window
+      const now = Date.now();
+      const sr = _socketRateMap.get(socket.id) || { count: 0, first: now };
+      if (now - sr.first > RATE_LIMITS.socket.windowMs) { sr.count = 0; sr.first = now; }
+      sr.count++;
+      _socketRateMap.set(socket.id, sr);
+      if (sr.count > RATE_LIMITS.socket.max) {
+        try { socket.emit('rate_limited', { reason: 'throttled' }); } catch (e) {}
+        return;
+      }
+
       if (!payload || typeof payload.lat === 'undefined' || typeof payload.lng === 'undefined') return;
       const lat = parseFloat(payload.lat);
       const lng = parseFloat(payload.lng);
       const accuracy = typeof payload.accuracy !== 'undefined' ? parseFloat(payload.accuracy) : null;
       const id = payload.id || (socketUser && socketUser.sub) || socket.id;
-      const now = Date.now();
       const record = { id, user_id: socketUser && socketUser.sub, lat, lng, accuracy, last_seen: now, name: (socketUser && socketUser.name) || null };
       // update in-memory cache
       liveLocations.set(id, record);
