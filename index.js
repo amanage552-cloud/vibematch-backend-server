@@ -40,6 +40,36 @@ if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true }
 // Serve downloadable artifacts from /downloads/*
 app.use('/downloads', express.static(downloadsDir, { maxAge: '1d' }));
 
+// Explicit download routes for enterprise distribution
+app.get('/downloads/VibeMatch.apk', (req, res) => {
+  const file = path.join(downloadsDir, 'VibeMatch.apk');
+  if (!fs.existsSync(file)) return res.status(404).send('Not found');
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.setHeader('Content-Disposition', 'attachment; filename="VibeMatch.apk"');
+  res.sendFile(file);
+});
+
+app.get('/downloads/VibeMatch.ipa', (req, res) => {
+  const file = path.join(downloadsDir, 'VibeMatch.ipa');
+  if (!fs.existsSync(file)) return res.status(404).send('Not found');
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'attachment; filename="VibeMatch.ipa"');
+  res.sendFile(file);
+});
+
+// Dynamic manifest.plist for OTA iOS enterprise installs
+app.get('/downloads/manifest.plist', (req, res) => {
+  try {
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    const ipaUrl = `${hostUrl}/downloads/VibeMatch.ipa`;
+    const plist = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>items</key>\n  <array>\n    <dict>\n      <key>assets</key>\n      <array>\n        <dict>\n          <key>kind</key>\n          <string>software-package</string>\n          <key>url</key>\n          <string>${ipaUrl}</string>\n        </dict>\n      </array>\n      <key>metadata</key>\n      <dict>\n        <key>bundle-identifier</key>\n        <string>com.vibematch.app</string>\n        <key>bundle-version</key>\n        <string>1.0.0</string>\n        <key>kind</key>\n        <string>software</string>\n        <key>title</key>\n        <string>VibeMatch</string>\n      </dict>\n    </dict>\n  </array>\n</dict>\n</plist>`;
+    res.setHeader('Content-Type', 'text/xml');
+    return res.send(plist);
+  } catch (e) {
+    return res.status(500).send('error');
+  }
+});
+
 // Simple request logger for structured logs (production-friendly)
 app.use((req, res, next) => {
   const start = Date.now();
