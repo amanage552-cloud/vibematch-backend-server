@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VibeMatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-bg"></div>
+
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">V</span>VibeMatch
+      </div>
+      <nav class="site-nav">
+        <a href="#about">About</a>
+        <a href="#matches">Matches</a>
+        <a href="#mobile">Mobile</a>
+      </nav>
+    </header>
+
+    <main class="site-shell">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <span class="eyebrow">Dating app for quality connections</span>
+          <h1>Find Real Connections That Matter</h1>
+          <p>
+            VibeMatch brings a sharp, dark-themed experience for meeting people who feel like the right fit. Fast matching, bright accents, and clean social profiles make every swipe feel intentional.
+          </p>
+          <div class="hero-actions">
+            <a href="#matches" class="btn btn-primary">Get Started</a>
+            <a href="#mobile" class="btn btn-secondary">See Mobile Demo</a>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-stat">
+            <span class="stat-number">98%</span>
+            <span class="stat-label">Match Accuracy</span>
+          </div>
+          <div class="hero-card-set">
+            <article class="user-card featured">
+              <div class="card-hero"></div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="name">Mia, 27</span>
+                  <span class="badge">92% Match</span>
+                </div>
+                <p>Creative strategist who loves late-night conversations and live music.</p>
+              </div>
+            </article>
+            <article class="user-card mini">
+              <div class="card-hero mini-photo"></div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="name">Noah, 29</span>
+                  <span class="badge small">88%</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="matches" class="live-match">
+        <div class="live-grid">
+          <div class="videos">
+            <div class="video-block local">
+              <video id="localVideo" autoplay muted playsinline></video>
+              <div class="video-label">You</div>
+            </div>
+            <div class="video-block remote">
+              <video id="remoteVideo" autoplay playsinline></video>
+              <div class="video-label">Partner</div>
+            </div>
+          </div>
+
+          <aside class="controls-panel">
+            <div class="controls-row">
+              <button id="startBtn" class="btn btn-primary large">Start / Next</button>
+              <button id="stopBtn" class="btn btn-stop large">Stop</button>
+            </div>
+
+            <div class="chat-panel">
+              <div id="chatList" class="chat-list"></div>
+              <div class="chat-input-row">
+                <input id="chatInput" placeholder="Say hi..." />
+                <button id="sendChatBtn" class="btn btn-secondary">Send</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="mobile" class="mobile-demo">
+        <div class="mobile-copy">
+          <p class="eyebrow">Mobile experience</p>
+          <h2>Swipe in style with the Discover feed</h2>
+          <p>
+            A polished mobile interface built for effortless browsing, quick decisions, and meaningful profiles.
+          </p>
+        </div>
+
+        <div class="mobile-mockup">
+          <div class="phone-shell">
+            <header class="phone-top">
+              <span class="phone-dot"></span>
+              <span class="phone-dot"></span>
+              <span class="phone-dot"></span>
+            </header>
+            <div class="discover-card">
+              <div class="discover-tag">Discover</div>
+              <div class="discover-photo"></div>
+              <div class="discover-info">
+                <div class="discover-header">
+                  <h3>Riley, 25</h3>
+                  <span>95% Match</span>
+                </div>
+                <p>Art director, coffee fan, and sunset chaser. Looking for someone who loves deep talks.</p>
+              </div>
+            </div>
+            <div class="bio-panel">
+              <div class="bio-row">
+                <span>Interests</span>
+                <strong>Art, travel, film</strong>
+              </div>
+              <div class="bio-row">
+                <span>Vibe</span>
+                <strong>Curious, playful, sincere</strong>
+              </div>
+            </div>
+            <div class="bottom-nav">
+              <button class="nav-btn active">Discover</button>
+              <button class="nav-btn">Matches</button>
+              <button class="nav-btn">Chats</button>
+              <button class="nav-btn">Profile</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/match.js"></script>
+  </body>
+</html>
