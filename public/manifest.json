@@ -1,0 +1,26 @@
+{
+  "name": "VibeMatch",
+  "short_name": "VibeMatch",
+  "start_url": "/app.html",
+  "display": "standalone",
+  "background_color": "#0B0C10",
+  "theme_color": "#0B0C10",
+  "description": "VibeMatch — connect with matches and share moments.",
+  "icons": [
+    {
+      "src": "/assets/logo.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/assets/logo.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/assets/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -249,4 +249,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetch('/api/posts', { method:'POST', headers: { ...(token?{ Authorization: 'Bearer '+token }: {}) }, body: fd });
     if(res.ok){ alert('Post created'); mediaUploadModal.style.display='none'; } else { const j = await res.json().catch(()=>{}); alert('Post failed: '+(j&&j.error?j.error:'error')); }
   });
+
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        console.info('ServiceWorker registered', reg.scope);
+      } catch (err) {
+        console.warn('ServiceWorker register failed', err);
+      }
+    });
+  }
 });
