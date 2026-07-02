@@ -6,7 +6,17 @@ async function fetchProfiles() {
     return await res.json();
   } catch (err) {
     console.error(err);
-    return [];
+    // return mock profiles when backend is unavailable
+    return [{
+      name: 'Ava', age: 26, match: 87,
+      photo: '/assets/logo.svg',
+      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      bio: 'Loves city sunsets and indie playlists.',
+      interests: ['coffee','hikes','vinyl']
+    }, {
+      name: 'Liam', age: 29, match: 82,
+      photo: '/assets/logo.svg', video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', bio: '', interests: []
+    }];
   }
 }
 
@@ -29,10 +39,16 @@ function createStoryNode(profile) {
 function createProfileCard(profile) {
   const article = document.createElement('article');
   article.className = 'rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900/60 to-black border border-gray-800 neon';
-
   const hero = document.createElement('div');
-  hero.className = 'h-80 bg-cover bg-center';
-  hero.style.backgroundImage = `url('${profile.photo}')`;
+  hero.className = 'h-80 bg-cover bg-center relative overflow-hidden';
+  if(profile.video){
+    const v = document.createElement('video');
+    v.src = profile.video; v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
+    v.className = 'w-full h-full object-cover';
+    hero.appendChild(v);
+  } else {
+    hero.style.backgroundImage = `url('${profile.photo}')`;
+  }
 
   const body = document.createElement('div');
   body.className = 'p-4 flex items-start justify-between';
@@ -93,6 +109,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const profiles = await fetchProfiles();
   const storiesRow = document.getElementById('storiesRow');
   const feedGrid = document.getElementById('feedGrid');
+  const profilePlayer = document.getElementById('profilePlayer');
+  const profileName = document.getElementById('profileName');
+  const profileAge = document.getElementById('profileAge');
+  const profileMatch = document.getElementById('profileMatch');
 
   if (storiesRow) {
     profiles.slice(0, 8).forEach((p) => storiesRow.appendChild(createStoryNode(p)));
@@ -100,5 +120,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (feedGrid) {
     profiles.forEach((p) => feedGrid.appendChild(createProfileCard(p)));
+  }
+
+  // set center profile player to first profile's video (fallback to mock)
+  if(profiles && profiles.length>0 && profilePlayer){
+    const p = profiles[0];
+    if(p.video){ profilePlayer.src = p.video; profilePlayer.muted=true; profilePlayer.loop=true; profilePlayer.autoplay=true; profilePlayer.playsInline=true; profilePlayer.play().catch(()=>{}); }
+    if(profileName) profileName.textContent = p.name || 'Guest';
+    if(profileAge) profileAge.textContent = p.age || '—';
+    if(profileMatch) profileMatch.textContent = (p.match||'—') + '%';
   }
 });

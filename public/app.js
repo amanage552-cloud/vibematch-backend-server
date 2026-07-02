@@ -70,19 +70,60 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load central profiles and initialize player
   async function loadProfiles(){
     try{
-      const res = await fetch('/api/profiles'); const profiles = await res.json();
-      if(!profiles || profiles.length===0) return;
+      const res = await fetch('/api/profiles'); let profiles = [];
+      if(res.ok) profiles = await res.json();
+      // fallback mock profile when backend not available or empty
+      if(!profiles || profiles.length===0){
+        profiles = [{
+          name: 'Ava', age: 26, match: 87,
+          video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+          bio: 'Loves city sunsets, indie playlists, and coffee shops.',
+        }];
+      }
       const p = profiles[0];
       if(profileName) profileName.textContent = p.name || 'Guest';
       if(profileAge) profileAge.textContent = p.age || '—';
       if(profileMatch) profileMatch.textContent = (p.match||'—') + '%';
-      if(profilePlayer){ profilePlayer.src = p.video || 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'; profilePlayer.play().catch(()=>{}); }
-    }catch(err){ console.warn('loadProfiles', err); }
+      if(profilePlayer){
+        profilePlayer.src = p.video || 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+        profilePlayer.muted = true;
+        profilePlayer.loop = true;
+        profilePlayer.playsInline = true;
+        profilePlayer.autoplay = true;
+        profilePlayer.play().catch(()=>{});
+      }
+    }catch(err){ console.warn('loadProfiles', err);
+      // set mock content on error
+      const p = { name: 'Ava', age: 26, match: 87, video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' };
+      if(profileName) profileName.textContent = p.name;
+      if(profileAge) profileAge.textContent = p.age;
+      if(profileMatch) profileMatch.textContent = p.match + '%';
+      if(profilePlayer){ profilePlayer.src = p.video; profilePlayer.muted = true; profilePlayer.loop = true; profilePlayer.playsInline = true; profilePlayer.autoplay = true; profilePlayer.play().catch(()=>{}); }
+    }
   }
 
   // populate nearby list
   async function loadNearby(){
-    try{ const res = await fetch('/api/online'); const near = await res.json(); const el = document.getElementById('nearbyList'); if(el) el.innerHTML = near.map(n=>`<div style="padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02)">${n.name}</div>`).join(''); }catch(e){}
+    try{
+      const res = await fetch('/api/online'); let near = [];
+      if(res.ok) near = await res.json();
+      if(!near || near.length===0){
+        near = [
+          { name: 'Ava — 0.8 mi' },
+          { name: 'Liam — 1.2 mi' },
+          { name: 'Zara — 1.9 mi' },
+          { name: 'Noah — 2.4 mi' }
+        ];
+      }
+      const el = document.getElementById('nearbyList');
+      if(el) el.innerHTML = near.map(n=>`<div style="padding:10px;border-radius:10px;margin-bottom:8px;background:linear-gradient(90deg, rgba(163,230,53,0.06), rgba(163,230,53,0.02));border:1px solid rgba(255,255,255,0.02);">`+
+        `<div style="font-weight:700;color:#E6FCD9">${n.name.split(' — ')[0]}</div><div style="font-size:12px;color:#9AB39A;margin-top:4px">${n.name.split(' — ')[1]||'—'}</div></div>`).join('');
+    }catch(e){
+      // fallback static list
+      const el = document.getElementById('nearbyList');
+      if(el) el.innerHTML = ['Ava — 0.8 mi','Liam — 1.2 mi','Zara — 1.9 mi','Noah — 2.4 mi'].map(n=>`<div style="padding:10px;border-radius:10px;margin-bottom:8px;background:linear-gradient(90deg, rgba(163,230,53,0.06), rgba(163,230,53,0.02));border:1px solid rgba(255,255,255,0.02);">`+
+        `<div style="font-weight:700;color:#E6FCD9">${n.split(' — ')[0]}</div><div style="font-size:12px;color:#9AB39A;margin-top:4px">${n.split(' — ')[1]||'—'}</div></div>`).join('');
+    }
   }
 
   await Promise.all([loadStories(), loadProfiles(), loadNearby()]);
