@@ -53,6 +53,8 @@
         <section id="cameraPanel" class="panel camera-wrap">
           <div class="top-bar"><div class="left small-btn">VibeMatch</div><div class="right small-btn">• Live</div></div>
           <video id="cameraVideo" autoplay playsinline muted></video>
+          <canvas id="glCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:0"></canvas>
+          <canvas id="overlayCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:1"></canvas>
 
           <div id="filterTray" class="filter-tray">
             <div class="filter-bubble" data-filter="none">Normal</div>
@@ -62,6 +64,7 @@
           </div>
 
           <div id="captureBtn" class="capture-btn" title="Capture">●</div>
+          <div id="postStoryBtn" style="position:absolute;right:20px;bottom:36px;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">Post to Story</div>
         </section>
 
         <!-- Right: Deck -->
@@ -74,7 +77,11 @@
       <div id="matchModal" class="modal"><div class="inner text-center"><h2 class="text-3xl font-bold">It's a VibeMatch!</h2><p class="mt-3">You and <span id="matchName"></span> liked each other.</p><div class="mt-6 flex gap-4 justify-center"><button id="msgBtn" class="px-6 py-3 rounded-lg bg-[#A3E635] text-black font-bold">Message</button><button id="closeModal" class="px-6 py-3 rounded-lg border border-gray-700">Close</button></div></div></div>
     </div>
 
-    <script src="/app.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="/filters.js"></script>
+    <script src="/app.js"></script>
   </body>
 </html>

@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const swipeContainer = document.getElementById('swipeContainer');
   const cameraVideo = document.getElementById('cameraVideo');
+  const overlayCanvas = document.getElementById('overlayCanvas');
   const filterTray = document.getElementById('filterTray');
   const captureBtn = document.getElementById('captureBtn');
   const cardStack = document.getElementById('cardStack');
@@ -26,8 +27,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
     cameraVideo.srcObject = stream;
     cameraVideo.play();
-    Filters.initFaceTrackingPlaceholder();
+    // initialize MediaPipe filters pipeline (if available)
+    const glCanvas = document.getElementById('glCanvas');
+    const postStoryBtn = document.getElementById('postStoryBtn');
+    if (window.Filters && typeof Filters.init === 'function') {
+      Filters.init(cameraVideo, glCanvas, overlayCanvas);
+    } else if (window.Filters && typeof Filters.initFaceTrackingPlaceholder === 'function'){
+      Filters.initFaceTrackingPlaceholder && Filters.initFaceTrackingPlaceholder();
+    }
   }catch(err){console.error('Camera error',err); alert('Camera access required for app');}
+
+  // Post to Story button behavior
+  const postStoryBtn = document.getElementById('postStoryBtn');
+  if (postStoryBtn) {
+    postStoryBtn.addEventListener('click', async () => {
+      try {
+        // prefer GL canvas snapshot if available
+        const glCanvasEl = document.getElementById('glCanvas');
+        let dataUrl = null;
+        if (glCanvasEl && glCanvasEl.toDataURL) dataUrl = glCanvasEl.toDataURL('image/jpeg', 0.9);
+        if (!dataUrl) {
+          const c = document.createElement('canvas'); c.width = cameraVideo.videoWidth; c.height = cameraVideo.videoHeight; c.getContext('2d').drawImage(cameraVideo,0,0,c.width,c.height); dataUrl = c.toDataURL('image/jpeg',0.9);
+        }
+        const resp = await fetch('/api/stories', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: localUserId, dataUrl, caption: '' }) });
+        const j = await resp.json();
+        if (resp.ok) { alert('Posted to Story'); } else { alert('Story upload failed: '+(j.error||resp.status)); }
+      } catch (err) { console.error('story post',err); alert('Upload failed'); }
+    });
+  }
+
+  // Socket.IO live integration
+  const socket = (window.io && io()) || null;
+  // create or reuse a local user id
+  let localUserId = localStorage.getItem('vibematch_user');
+  if (!localUserId) { localUserId = 'user_' + Math.random().toString(36).slice(2,9); localStorage.setItem('vibematch_user', localUserId); }
+  if (socket) { socket.emit('identify', { userId: localUserId }); socket.on('matched', (data) => { const otherId = data?.with; if(!otherId) return; // try to map to name
+      const cardProfile = profilesById[otherId]; matchName.textContent = cardProfile ? cardProfile.name : otherId; matchModal.style.display='flex'; }); }
 
   // filter selection
   filterTray.querySelectorAll('.filter-bubble').forEach(b=>{
@@ -50,10 +85,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // build deck from /api/profiles
+  const profilesById = {};
+
   async function loadDeck(){
     try{
       const res = await fetch('/api/profiles'); const profiles = await res.json();
-      profiles.reverse().forEach(p=>pushCard(p));
+      profiles.reverse().forEach(p=>{ profilesById[p.id]=p; pushCard(p); });
     }catch(err){console.error('Deck load error',err)}
   }
 
@@ -76,7 +113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function onLike(profile){
-    // Simple mutual-match simulation: if profile.match >= 90 show modal
+    // emit like to server via Socket.IO for live matching
+    try{
+      if (socket) socket.emit('deck_like', { fromUserId: localUserId, targetUserId: profile.id });
+    }catch(e){console.warn('like emit failed',e)}
+    // local fallback: show modal for high-match scores
     if(profile.match>=90){ matchName.textContent=profile.name; matchModal.style.display='flex'; }
   }
 
