@@ -6,9 +6,10 @@
     <title>VibeMatch — App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600;700&display=swap');
       :root{--bg:#07080a;--panel:#081018;--accent:#A3E635;--accent-strong:#9AE64D}
       body{margin:0;background:var(--bg);color:#E6EEF3;font-family:Inter,system-ui}
+      .brand{font-family:Poppins,Inter,sans-serif;font-weight:700;color:var(--accent)}
       /* Layout */
       .app-shell{display:flex;height:100vh;overflow:hidden}
       .left-nav{width:84px;background:linear-gradient(180deg,#050607,#071018);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;padding:12px;gap:12px}
@@ -43,7 +44,18 @@
   <body>
     <div class="app-shell">
       <nav class="left-nav" aria-label="Main">
-        <div class="nav-icon">VM</div>
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-[#091015] to-[#0b0c10] neon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="4" stroke="#A3E635" stroke-opacity="0.9" stroke-width="1.5" />
+              <path d="M6 12 L12 6 L18 12 L12 18 Z" fill="#A3E635" fill-opacity="0.06" />
+              <path d="M9 12 L12 9 L15 12 L12 15 Z" fill="#A3E635" />
+            </svg>
+          </div>
+          <div class="brand text-lg">VibeMatch</div>
+        </div>
+
+        <div class="nav-icon">🏠</div>
         <div class="nav-icon">★</div>
         <div class="nav-icon">⚙</div>
         <div style="flex:1"></div>
